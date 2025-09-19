@@ -9,5 +9,4 @@ namespace API_BANKING_PAYMENT.Respositories
         {
         }
     }
-    
 }
