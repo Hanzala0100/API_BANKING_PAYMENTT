@@ -5,7 +5,7 @@ namespace API_BANKING_PAYMENT
 {
     public class Program
     {
-        public static async Task Main(string[] args)   //   make Main async
+        public static async Task Main(string[] args)   
         {
             var builder = WebApplication.CreateBuilder(args);
 
