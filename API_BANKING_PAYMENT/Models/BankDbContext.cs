@@ -35,7 +35,7 @@ public partial class BankDbContext : DbContext
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("Server=(localdb)\\TestInstance;Database=Bank_DB;Trusted_Connection=True;");
+        => optionsBuilder.UseSqlServer("Server= HP2101\\SWABHAVTECHLABS; Database=Bank_Db; TrustServerCertificate=true; User Id= sa; Password =admin#123;");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
