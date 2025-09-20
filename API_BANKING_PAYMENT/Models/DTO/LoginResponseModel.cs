@@ -1,6 +1,4 @@
-﻿using API_BANKING_PAYMENT.Models.DTO;
-
-namespace API_BANKING_PAYMENT.Models.Entities
+﻿namespace API_BANKING_PAYMENT.Models.DTO
 {
     public class LoginResponseModel
     {

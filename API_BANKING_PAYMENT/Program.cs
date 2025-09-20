@@ -1,4 +1,4 @@
-using API_BANKING_PAYMENT.Models;
+using API_BANKING_PAYMENT.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace API_BANKING_PAYMENT
@@ -27,7 +27,7 @@ namespace API_BANKING_PAYMENT
                 {
                     var connection = dbContext.Database.GetDbConnection();
                     await connection.OpenAsync();
-                    Console.WriteLine("  Connected to DB: +++++++++++++++++++++++++++++++++++++++++++++++++++" + connection.Database);
+                    Console.WriteLine(" Successfully Connected to DB: +++++++++++++++++++++++++++++++++++++++++++++++++++" + connection.Database);
                     await connection.CloseAsync();
                 }
                 catch (Exception ex)
