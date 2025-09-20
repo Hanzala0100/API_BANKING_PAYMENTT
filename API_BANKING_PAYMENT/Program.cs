@@ -1,6 +1,6 @@
 using API_BANKING_PAYMENT.Models.Entities;
 using Microsoft.EntityFrameworkCore;
-
+using API_BANKING_PAYMENT.Models.Entities;
 namespace API_BANKING_PAYMENT
 {
     public class Program
