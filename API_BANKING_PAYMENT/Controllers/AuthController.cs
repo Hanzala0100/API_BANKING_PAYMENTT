@@ -1,5 +1,8 @@
 ﻿using API_BANKING_PAYMENT.Models.DTO;
+using API_BANKING_PAYMENT.Models.Entities;
+using API_BANKING_PAYMENT.Services;
 using API_BANKING_PAYMENT.Services.IServices;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -31,6 +34,20 @@ namespace API_BANKING_PAYMENT.Controllers
                 }
             }
                 return BadRequest();
+        }
+
+        [HttpPost("register")]
+        public async Task<IActionResult> Register([FromBody] RegisterDTO model)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest("Invalid request.");
+
+            var response = await _service.RegisterAsync(model);
+
+            if (!response.IsSuccess)
+                return BadRequest(response);
+
+            return Ok(response);
         }
     }
 }
