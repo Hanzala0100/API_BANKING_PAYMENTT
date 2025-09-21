@@ -21,6 +21,31 @@ namespace API_BANKING_PAYMENT.Services
             _config = config;
             _mapper = mapper;
         }
+        public async Task<LoginResponseModel> RegisterAsync(RegisterDTO model)
+        {
+            var existingUser = await _repository.GetByEmailAsync(model.Email);
+            if (existingUser != null)
+            {
+                return new LoginResponseModel
+                {
+                    IsSuccess = false,
+                    Message = "User already exists with this email."
+                };
+            }
+
+            var user = _mapper.Map<User>(model);
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password);
+            await _repository.Add(user);
+            var userDto = _mapper.Map<UserDTO>(user);
+
+            return new LoginResponseModel
+            {
+                User = userDto,
+                IsSuccess = true,
+                Message = "User registered successfully."
+            };
+        }
+
         public async Task<LoginResponseModel> LoginAsync(LoginViewModel user)
         {
             var existingUser = await _repository.GetByEmailAsync(user.Email);

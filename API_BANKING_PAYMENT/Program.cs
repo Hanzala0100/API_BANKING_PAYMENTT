@@ -1,5 +1,8 @@
 using API_BANKING_PAYMENT.Models.Entities;
-using API_BANKING_PAYMENT.Models.Entities;
+using API_BANKING_PAYMENT.Respositories.IRepositories;
+using API_BANKING_PAYMENT.Respositories;
+using API_BANKING_PAYMENT.Services;
+using API_BANKING_PAYMENT.Services.IServices;
 using API_SmartLibrary.Exceptions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -17,12 +20,16 @@ namespace API_BANKING_PAYMENT
 
             builder.Services.AddDbContext<BankDbContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("BankDatabase")));
-
+            
             // Add services to the container.
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
             builder.Services.AddAutoMapper(typeof(Program));
+
+            //Add Repositories and Services
+            builder.Services.AddScoped<IUserRepository, UserRepository>();
+            builder.Services.AddScoped<IUserService, UserService>();
 
             // Add Authentication
             builder.Services.AddAuthentication(opt =>

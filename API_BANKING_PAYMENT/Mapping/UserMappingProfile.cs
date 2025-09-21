@@ -1,7 +1,7 @@
 ﻿using API_BANKING_PAYMENT.Models.Entities;
 using API_BANKING_PAYMENT.Models.DTO;
-using API_BANKING_PAYMENT.Models.Entities;
 using AutoMapper;
+using System;
 
 namespace API_BANKING_PAYMENT.Mapping
 {
@@ -10,7 +10,12 @@ namespace API_BANKING_PAYMENT.Mapping
         public UserMappingProfile()
         {
             CreateMap<User, UserDTO>()
-                .ForMember(dest => dest.BankName, opt => opt.MapFrom(src => src.Bank != null ? src.Bank.BankName : null));
+                .ForMember(dest => dest.BankName,
+                           opt => opt.MapFrom(src => src.Bank != null ? src.Bank.BankName : null));
+
+            CreateMap<RegisterDTO, User>()
+                .ForMember(dest => dest.PasswordHash, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => DateTime.UtcNow));
         }
     }
 }
