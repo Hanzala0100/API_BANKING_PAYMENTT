@@ -3,10 +3,8 @@
     public class LoginResponseModel
     {
         public UserDTO User { get; set; }
-        public string Token { get; set; } = string.Empty;
-        public DateTime TokenExpiry { get; set; }
-
+        public TokenDTO Token { get; set; }
         public bool IsSuccess { get; set; }
-        public string Message { get; set; } = string.Empty;
+        public string Message { get; set; }
     }
 }
