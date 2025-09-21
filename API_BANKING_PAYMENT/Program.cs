@@ -1,6 +1,11 @@
 using API_BANKING_PAYMENT.Models.Entities;
-using Microsoft.EntityFrameworkCore;
 using API_BANKING_PAYMENT.Models.Entities;
+using API_SmartLibrary.Exceptions;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using System.Text;
 namespace API_BANKING_PAYMENT
 {
     public class Program
@@ -8,6 +13,7 @@ namespace API_BANKING_PAYMENT
         public static async Task Main(string[] args)   
         {
             var builder = WebApplication.CreateBuilder(args);
+            var jwtSettings = builder.Configuration.GetSection("Jwt");
 
             builder.Services.AddDbContext<BankDbContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("BankDatabase")));
@@ -17,6 +23,67 @@ namespace API_BANKING_PAYMENT
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
             builder.Services.AddAutoMapper(typeof(Program));
+
+            // Add Authentication
+            builder.Services.AddAuthentication(opt =>
+            {
+                opt.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                opt.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = bool.Parse(jwtSettings["ValidateIssuer"]),
+                    ValidateAudience = bool.Parse(jwtSettings["ValidateAudience"]),
+                    ValidateLifetime = bool.Parse(jwtSettings["ValidateLifetime"]),
+                    ValidateIssuerSigningKey = bool.Parse(jwtSettings["ValidateIssuerSigningKey"]),
+                    ValidIssuer = jwtSettings["Issuer"],
+                    ValidAudience = jwtSettings["Audience"],
+                    IssuerSigningKey = new SymmetricSecurityKey(
+                        Encoding.UTF8.GetBytes(jwtSettings["Key"]))
+                };
+            });
+
+            // Configure JWT to use Swagger
+            builder.Services.AddSwaggerGen(options =>
+            {
+                options.SwaggerDoc("v1", new OpenApiInfo
+                {
+                    Version = "v1",
+                    Title = "Banking App"
+                });
+
+                var securityScheme = new OpenApiSecurityScheme
+                {
+                    Name = "Authorization",
+                    Description = "Enter Jwt Token Only",
+                    In = ParameterLocation.Header,
+                    Type = SecuritySchemeType.Http,
+                    Scheme = "bearer",
+                    BearerFormat = "JWT",
+                    Reference = new OpenApiReference
+                    {
+                        Id = JwtBearerDefaults.AuthenticationScheme,
+                        Type = ReferenceType.SecurityScheme
+                    }
+                };
+                options.AddSecurityDefinition(securityScheme.Reference.Id, securityScheme);
+                options.AddSecurityRequirement(new OpenApiSecurityRequirement
+                {
+                    { securityScheme, new string[] { } }
+                });
+            });
+
+            builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+            builder.Services.AddProblemDetails();
+
+            builder.Services.AddLogging(builder =>
+            {
+                builder.AddConsole();
+                builder.SetMinimumLevel(LogLevel.Debug);
+            });
+
 
             var app = builder.Build();
 
@@ -40,7 +107,11 @@ namespace API_BANKING_PAYMENT
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
-                app.UseSwaggerUI();
+                app.UseSwaggerUI(options =>
+                {
+                    options.SwaggerEndpoint("/swagger/v1/swagger.json", "Banking App");
+                    options.EnablePersistAuthorization();
+                });
             }
 
             app.UseHttpsRedirection();
