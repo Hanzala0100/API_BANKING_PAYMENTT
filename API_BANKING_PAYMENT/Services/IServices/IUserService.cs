@@ -6,6 +6,6 @@ namespace API_BANKING_PAYMENT.Services.IServices
     public interface IUserService
     {
         Task<LoginResponseModel> LoginAsync(LoginViewModel user);
-        Task<LoginResponseModel> RegisterAsync(RegisterDTO model);
+        Task<RegisterResponseModel> RegisterAsync(RegisterDTO model);
     }
 }
