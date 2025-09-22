@@ -205,6 +205,46 @@ public partial class BankDbContext : DbContext
                 .HasConstraintName("user_clientid_foreign");
         });
 
+        modelBuilder.Entity<Bank>().HasData(
+     new Bank
+     {
+         BankId = 1,
+         BankName = "State Bank of India",
+         Address = "Madam Cama Road, Mumbai, India",
+         ContactEmail = "contact@sbi.co.in",
+         ContactPhone = "1800-123-456",
+         CreatedAt = new DateTime(2025, 9, 22, 0, 0, 0)  
+     },
+     new Bank
+     {
+         BankId = 2,
+         BankName = "HDFC Bank",
+         Address = "Mumbai, Maharashtra, India",
+         ContactEmail = "contact@hdfcbank.com",
+         ContactPhone = "1800-234-567",
+         CreatedAt = new DateTime(2025, 9, 22, 0, 0, 0)
+     },
+     new Bank
+     {
+         BankId = 3,
+         BankName = "ICICI Bank",
+         Address = "Mumbai, Maharashtra, India",
+         ContactEmail = "contact@icicibank.com",
+         ContactPhone = "1800-345-678",
+         CreatedAt = new DateTime(2025, 9, 22, 0, 0, 0)
+     },
+     new Bank
+     {
+         BankId = 4,
+         BankName = "Axis Bank",
+         Address = "Mumbai, Maharashtra, India",
+         ContactEmail = "contact@axisbank.com",
+         ContactPhone = "1800-456-789",
+         CreatedAt = new DateTime(2025, 9, 22, 0, 0, 0)
+     }
+ );
+
+
         OnModelCreatingPartial(modelBuilder);
     }
 

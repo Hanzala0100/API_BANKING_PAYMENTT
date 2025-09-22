@@ -15,14 +15,17 @@ namespace API_BANKING_PAYMENT.Services
         private readonly IUserRepository _repository;
         private readonly IConfiguration _config;
         private readonly IMapper _mapper;
+
         public UserService(IUserRepository repository, IConfiguration config, IMapper mapper)
         {
             _repository = repository;
             _config = config;
             _mapper = mapper;
         }
+
         public async Task<LoginResponseModel> RegisterAsync(RegisterDTO model)
         {
+            // Check if user already exists
             var existingUser = await _repository.GetByEmailAsync(model.Email);
             if (existingUser != null)
             {
@@ -33,9 +36,40 @@ namespace API_BANKING_PAYMENT.Services
                 };
             }
 
+            // Map DTO to User entity
             var user = _mapper.Map<User>(model);
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password);
+            user.CreatedAt = DateTime.UtcNow;
+
+            // If registering as ClientUser, create Client entry
+            if (user.Role == "ClientUser")
+            {
+                if (!model.BankId.HasValue)
+                {
+                    return new LoginResponseModel
+                    {
+                        IsSuccess = false,
+                        Message = "BankId is required for ClientUser registration."
+                    };
+                }
+
+                // Create new Client
+                var client = new Client
+                {
+                    BankId = model.BankId.Value,
+                    ClientName = user.FullName,
+                    RegisterationNumber = Guid.NewGuid().ToString(),
+                    Address = "N/A",
+                    VerificationStatus = "Pending",
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                await _repository.AddClientAsync(client);
+                user.ClientId = client.ClientId;
+            }
+
             await _repository.Add(user);
+
             var userDto = _mapper.Map<UserDTO>(user);
 
             return new LoginResponseModel
@@ -63,10 +97,8 @@ namespace API_BANKING_PAYMENT.Services
                 User = _mapper.Map<UserDTO>(existingUser),
                 IsSuccess = true,
                 Token = GenerateJWTToken(existingUser),
-                Message = "Login successful.",
-
+                Message = "Login successful."
             };
-
         }
 
         private TokenDTO GenerateJWTToken(User user)
@@ -77,12 +109,12 @@ namespace API_BANKING_PAYMENT.Services
             var signingCredentials = new SigningCredentials(secretKey, SecurityAlgorithms.HmacSha256);
 
             var claims = new List<Claim>
-                    {
-                        new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
-                        new Claim(ClaimTypes.Name, user.FullName ?? string.Empty),
-                        new Claim(ClaimTypes.Email, user.Email ?? string.Empty),
-                        new Claim(ClaimTypes.Role, user.Role ?? string.Empty)
-                    };
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
+                new Claim(ClaimTypes.Name, user.FullName ?? string.Empty),
+                new Claim(ClaimTypes.Email, user.Email ?? string.Empty),
+                new Claim(ClaimTypes.Role, user.Role ?? string.Empty)
+            };
 
             var expiry = DateTime.UtcNow.AddMinutes(10);
 
@@ -99,6 +131,5 @@ namespace API_BANKING_PAYMENT.Services
                 Expiry = expiry
             };
         }
-
     }
 }

@@ -8,7 +8,8 @@
 
         public string Role { get; set; } = null!;
 
-        //public long? BankId { get; set; }
-        //public long? ClientId { get; set; }
+        public long? BankId { get; set; }
+
+        public long? ClientId { get; set; } 
     }
 }

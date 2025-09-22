@@ -18,5 +18,12 @@ namespace API_BANKING_PAYMENT.Respositories
             return await _context.Users
                 .FirstOrDefaultAsync(u => u.Email == email);
         }
+
+        public async Task AddClientAsync(Client client)
+        {
+            _context.Clients.Add(client);
+            await _context.SaveChangesAsync();
+        }
+
     }
 }
