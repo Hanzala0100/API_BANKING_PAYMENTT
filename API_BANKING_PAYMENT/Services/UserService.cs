@@ -22,14 +22,13 @@ namespace API_BANKING_PAYMENT.Services
             _config = config;
             _mapper = mapper;
         }
-
-        public async Task<LoginResponseModel> RegisterAsync(RegisterDTO model)
+        public async Task<RegisterResponseModel> RegisterAsync(RegisterDTO model)
         {
             // Check if user already exists
             var existingUser = await _repository.GetByEmailAsync(model.Email);
             if (existingUser != null)
             {
-                return new LoginResponseModel
+                return new RegisterResponseModel
                 {
                     IsSuccess = false,
                     Message = "User already exists with this email."
@@ -46,7 +45,7 @@ namespace API_BANKING_PAYMENT.Services
             {
                 if (!model.BankId.HasValue)
                 {
-                    return new LoginResponseModel
+                    return new RegisterResponseModel
                     {
                         IsSuccess = false,
                         Message = "BankId is required for ClientUser registration."
@@ -70,11 +69,8 @@ namespace API_BANKING_PAYMENT.Services
 
             await _repository.Add(user);
 
-            var userDto = _mapper.Map<UserDTO>(user);
-
-            return new LoginResponseModel
+            return new RegisterResponseModel
             {
-                User = userDto,
                 IsSuccess = true,
                 Message = "User registered successfully."
             };
