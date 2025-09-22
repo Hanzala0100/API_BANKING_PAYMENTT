@@ -3,25 +3,24 @@ using API_BANKING_PAYMENT.Models.Entities;
 using API_BANKING_PAYMENT.Respositories.IRepositories;
 using API_BANKING_PAYMENT.Services.IServices;
 using AutoMapper;
-using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
+using System;
+using System.Threading.Tasks;
 
 namespace API_BANKING_PAYMENT.Services
 {
     public class UserService : IUserService
     {
         private readonly IUserRepository _repository;
-        private readonly IConfiguration _config;
+        private readonly IBankService _bankService;
         private readonly IMapper _mapper;
 
-        public UserService(IUserRepository repository, IConfiguration config, IMapper mapper)
+        public UserService(IUserRepository repository, IBankService bankService, IMapper mapper)
         {
             _repository = repository;
-            _config = config;
+            _bankService = bankService;
             _mapper = mapper;
         }
+
         public async Task<RegisterResponseModel> RegisterAsync(RegisterDTO model)
         {
             // Check if user already exists
@@ -40,32 +39,42 @@ namespace API_BANKING_PAYMENT.Services
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password);
             user.CreatedAt = DateTime.UtcNow;
 
-            // If registering as ClientUser, create Client entry
-            if (user.Role == "ClientUser")
+            if (user.Role == "BankUser" || user.Role == "ClientUser")
             {
                 if (!model.BankId.HasValue)
                 {
                     return new RegisterResponseModel
                     {
                         IsSuccess = false,
-                        Message = "BankId is required for ClientUser registration."
+                        Message = "BankId is required for this role."
                     };
                 }
 
-                // Create new Client
-                var client = new Client
+                var bank = await _bankService.GetBankById((int)model.BankId);
+                if (bank != null)
                 {
-                    BankId = model.BankId.Value,
-                    ClientName = user.FullName,
-                    RegisterationNumber = Guid.NewGuid().ToString(),
-                    Address = "N/A",
-                    VerificationStatus = "Pending",
-                    CreatedAt = DateTime.UtcNow
-                };
+                    user.BankId = bank.BankId;
+                    //user.Bank.BankName = bank.BankName;  
+                }
 
-                await _repository.AddClientAsync(client);
-                user.ClientId = client.ClientId;
+                // Extra steps for ClientUser
+                if (user.Role == "ClientUser")
+                {
+                    var client = new Client
+                    {
+                        BankId = model.BankId.Value,
+                        ClientName = user.FullName,
+                        RegisterationNumber = Guid.NewGuid().ToString(),
+                        Address = "N/A",
+                        VerificationStatus = "Pending",
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    await _repository.AddClientAsync(client);
+                    user.ClientId = client.ClientId;
+                }
             }
+
 
             await _repository.Add(user);
 
@@ -76,10 +85,11 @@ namespace API_BANKING_PAYMENT.Services
             };
         }
 
-        public async Task<LoginResponseModel> LoginAsync(LoginViewModel user)
+        public async Task<LoginResponseModel> LoginAsync(LoginViewModel model)
         {
-            var existingUser = await _repository.GetByEmailAsync(user.Email);
-            if (existingUser == null || !BCrypt.Net.BCrypt.Verify(user.Password, existingUser.PasswordHash))
+            var existingUser = await _repository.GetByEmailAsync(model.Email);
+
+            if (existingUser == null || !BCrypt.Net.BCrypt.Verify(model.Password, existingUser.PasswordHash))
             {
                 return new LoginResponseModel
                 {
@@ -88,44 +98,15 @@ namespace API_BANKING_PAYMENT.Services
                 };
             }
 
+            var userDto = _mapper.Map<UserDTO>(existingUser);
+
             return new LoginResponseModel
             {
-                User = _mapper.Map<UserDTO>(existingUser),
+                User = userDto,
                 IsSuccess = true,
-                Token = GenerateJWTToken(existingUser),
                 Message = "Login successful."
             };
         }
 
-        private TokenDTO GenerateJWTToken(User user)
-        {
-            var jwtSettings = _config.GetSection("Jwt");
-
-            var secretKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Key"]));
-            var signingCredentials = new SigningCredentials(secretKey, SecurityAlgorithms.HmacSha256);
-
-            var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
-                new Claim(ClaimTypes.Name, user.FullName ?? string.Empty),
-                new Claim(ClaimTypes.Email, user.Email ?? string.Empty),
-                new Claim(ClaimTypes.Role, user.Role ?? string.Empty)
-            };
-
-            var expiry = DateTime.UtcNow.AddMinutes(10);
-
-            var tokenOptions = new JwtSecurityToken(
-                issuer: jwtSettings["Issuer"],
-                audience: jwtSettings["Audience"],
-                claims: claims,
-                expires: expiry,
-                signingCredentials: signingCredentials);
-
-            return new TokenDTO
-            {
-                Token = new JwtSecurityTokenHandler().WriteToken(tokenOptions),
-                Expiry = expiry
-            };
-        }
     }
 }

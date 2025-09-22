@@ -30,6 +30,10 @@ namespace API_BANKING_PAYMENT
             //Add Repositories and Services
             builder.Services.AddScoped<IUserRepository, UserRepository>();
             builder.Services.AddScoped<IUserService, UserService>();
+            builder.Services.AddScoped<IBankService, BankService>();
+            builder.Services.AddScoped<IBankRepository, BankRepository>();
+            builder.Services.AddScoped<IEmployeeRepository, EmployeeRepository>();
+            builder.Services.AddScoped<IEmployeeService, EmployeeService>();
 
             // Add Authentication
             builder.Services.AddAuthentication(opt =>

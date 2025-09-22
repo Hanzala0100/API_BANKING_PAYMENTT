@@ -5,5 +5,6 @@ namespace API_BANKING_PAYMENT.Respositories.IRepositories
 {
     public interface IBankRepository : IRepository<Bank>
     {
+        Task<Bank> GetBankWithDetails(int id);
     }
 }

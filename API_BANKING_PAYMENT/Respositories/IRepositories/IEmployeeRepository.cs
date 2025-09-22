@@ -5,5 +5,6 @@ namespace API_BANKING_PAYMENT.Respositories.IRepositories
 {
     public interface IEmployeeRepository : IRepository<Employee>
     {
+        Task<User> GetByEmailAsync(string email);
     }
 }

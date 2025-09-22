@@ -1,5 +1,6 @@
 ﻿using API_BANKING_PAYMENT.Models.DTO;
 using API_BANKING_PAYMENT.Respositories;
+using API_BANKING_PAYMENT.Respositories.IRepositories;
 using API_BANKING_PAYMENT.Services.IServices;
 using AutoMapper;
 
@@ -7,10 +8,10 @@ namespace API_BANKING_PAYMENT.Services
 {
     public class EmployeeService : IEmployeeService
     {
-        private readonly EmployeeRepository _repository;
+        private readonly IEmployeeRepository _repository;
         private readonly IConfiguration _config;
         private readonly IMapper _mapper;
-        public EmployeeService(EmployeeRepository repository, IConfiguration config, IMapper mapper)
+        public EmployeeService(IEmployeeRepository repository, IConfiguration config, IMapper mapper)
         {
             _repository = repository;
             _config = config;

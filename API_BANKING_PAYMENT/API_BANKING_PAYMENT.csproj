@@ -21,7 +21,6 @@
 
   <ItemGroup>
     <Folder Include="Models\DTO\" />
-    <Folder Include="Services\IServices\" />
   </ItemGroup>
 
 </Project>

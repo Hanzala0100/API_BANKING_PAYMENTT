@@ -16,7 +16,9 @@ namespace API_BANKING_PAYMENT.Respositories
         public async Task<User> GetByEmailAsync(string email)
         {
             return await _context.Users
+                .Include(u => u.Bank)
                 .FirstOrDefaultAsync(u => u.Email == email);
+
         }
 
         public async Task AddClientAsync(Client client)
