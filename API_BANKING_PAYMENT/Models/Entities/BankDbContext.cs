@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using API_BANKING_PAYMENT.Models.Enum;
 using Microsoft.EntityFrameworkCore;
 
+
 namespace API_BANKING_PAYMENT.Models.Entities;
 
 public partial class BankDbContext : DbContext
@@ -246,7 +247,6 @@ public partial class BankDbContext : DbContext
      }
  );
 
-
         modelBuilder.Entity<User>().HasData(
      new User
      {
@@ -261,7 +261,6 @@ public partial class BankDbContext : DbContext
          ClientId = null,
          CreatedAt = new DateTime(2025, 01, 01)  
      });
-
 
         OnModelCreatingPartial(modelBuilder);
     }

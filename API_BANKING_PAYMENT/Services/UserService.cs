@@ -13,12 +13,14 @@ namespace API_BANKING_PAYMENT.Services
         private readonly IUserRepository _repository;
         private readonly IBankService _bankService;
         private readonly IMapper _mapper;
+        private readonly ILogger<SuperAdminService> _logger;
 
-        public UserService(IUserRepository repository, IBankService bankService, IMapper mapper)
+        public UserService(IUserRepository repository, IBankService bankService, IMapper mapper, ILogger<SuperAdminService> logger)
         {
             _repository = repository;
             _bankService = bankService;
             _mapper = mapper;
+            _logger = logger;
         }
 
         //public async Task<RegisterResponseModel> RegisterAsync(RegisterDTO model)
@@ -88,7 +90,6 @@ namespace API_BANKING_PAYMENT.Services
         public async Task<LoginResponseModel> LoginAsync(LoginViewModel model)
         {
             var existingUser = await _repository.GetByUsernameAsync(model.Username);
-            //var existingUser = await _repository.GetByEmailAsync(model.Email);
             bool verfiedUser = BCrypt.Net.BCrypt.Verify(model.Password, existingUser.PasswordHash);
             string amdinHash = BCrypt.Net.BCrypt.HashPassword("Admin#123");
             Console.WriteLine(amdinHash);
@@ -104,6 +105,7 @@ namespace API_BANKING_PAYMENT.Services
 
             var userDto = _mapper.Map<UserDTO>(existingUser);
 
+            _logger.LogInformation("User Logged in Successfully, UserId: ",userDto.FullName);
             return new LoginResponseModel
             {
                 User = userDto,
