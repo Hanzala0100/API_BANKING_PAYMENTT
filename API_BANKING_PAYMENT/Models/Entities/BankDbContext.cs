@@ -255,7 +255,8 @@ public partial class BankDbContext : DbContext
          FullName = "SuperAdmin",
          Email = "superAdmin@gmail.com",
          Role = Roles.SuperAdmin,
-         PasswordHash = "$2a$11$uQuZz75pVmvWq0kMOmbSWeYtnhN9jI8IpjZLUGDGtYIbjvFzsnqqC",
+         // Hash for Admin#123
+         PasswordHash = "$2a$11$jHouR8b8dzPXF6gipSngJungngAfK2s./8WMSWUpor0Zs1h9iDTnS",
          BankId = null,
          ClientId = null,
          CreatedAt = new DateTime(2025, 01, 01)  

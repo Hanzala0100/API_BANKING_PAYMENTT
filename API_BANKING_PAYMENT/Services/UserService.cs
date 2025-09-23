@@ -87,9 +87,13 @@ namespace API_BANKING_PAYMENT.Services
 
         public async Task<LoginResponseModel> LoginAsync(LoginViewModel model)
         {
-            var existingUser = await _repository.GetByEmailAsync(model.Email);
-
-            if (existingUser == null || !BCrypt.Net.BCrypt.Verify(model.Password, existingUser.PasswordHash))
+            var existingUser = await _repository.GetByUsernameAsync(model.Username);
+            //var existingUser = await _repository.GetByEmailAsync(model.Email);
+            bool verfiedUser = BCrypt.Net.BCrypt.Verify(model.Password, existingUser.PasswordHash);
+            string amdinHash = BCrypt.Net.BCrypt.HashPassword("Admin#123");
+            Console.WriteLine(amdinHash);
+            Console.WriteLine(verfiedUser);
+            if (existingUser == null || !verfiedUser)
             {
                 return new LoginResponseModel
                 {
