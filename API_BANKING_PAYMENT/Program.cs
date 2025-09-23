@@ -18,6 +18,7 @@ namespace API_BANKING_PAYMENT
         {
             var builder = WebApplication.CreateBuilder(args);
             var jwtSettings = builder.Configuration.GetSection("Jwt");
+            var cloudinarySettings = builder.Configuration.GetSection("CloudinarySettings");
 
             builder.Services.AddDbContext<BankDbContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("BankDatabase")));
@@ -38,6 +39,13 @@ namespace API_BANKING_PAYMENT
             //Employee
             builder.Services.AddScoped<IEmployeeRepository, EmployeeRepository>();
             builder.Services.AddScoped<IEmployeeService, EmployeeService>();
+            builder.Services.AddScoped<IClientRepository, ClientRepository>();
+            //builder.Services.AddScoped<IClientService, ClientService>();
+            builder.Services.AddScoped<IDocumentService, DocumentService>();
+
+
+            builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
+
 
             //Admin
             builder.Services.AddScoped<ISuperAdminService, SuperAdminService>();
@@ -96,11 +104,13 @@ namespace API_BANKING_PAYMENT
                         Type = ReferenceType.SecurityScheme
                     }
                 };
+
                 options.AddSecurityDefinition(securityScheme.Reference.Id, securityScheme);
                 options.AddSecurityRequirement(new OpenApiSecurityRequirement
                 {
                     { securityScheme, new string[] { } }
                 });
+
             });
 
             builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
