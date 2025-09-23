@@ -92,3 +92,5 @@ coverage/
 # Publish outputs
 publish/
 out/
+/API_BANKING_PAYMENT/Migrations/20250923100432_PendingChangesCheck.cs
+/API_BANKING_PAYMENT/Migrations/20250923100432_PendingChangesCheck.Designer.cs
