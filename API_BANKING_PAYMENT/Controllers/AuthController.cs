@@ -36,18 +36,18 @@ namespace API_BANKING_PAYMENT.Controllers
                 return BadRequest();
         }
 
-        [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] RegisterDTO model)
-        {
-            if (!ModelState.IsValid)
-                return BadRequest("Invalid request.");
+        // [HttpPost("register")]
+        // public async Task<IActionResult> Register([FromBody] RegisterDTO model)
+        // {
+        //     if (!ModelState.IsValid)
+        //         return BadRequest("Invalid request.");
 
-            var response = await _service.RegisterAsync(model);
+        //     var response = await _service.RegisterAsync(model);
 
-            if (!response.IsSuccess)
-                return BadRequest(response);
+        //     if (!response.IsSuccess)
+        //         return BadRequest(response);
 
-            return Ok(response);
-        }
+        //     return Ok(response);
+        // }
     }
 }

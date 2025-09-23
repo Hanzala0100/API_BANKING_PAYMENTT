@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using API_BANKING_PAYMENT.Models.Enum;
 using Microsoft.EntityFrameworkCore;
 
 namespace API_BANKING_PAYMENT.Models.Entities;
@@ -193,6 +194,7 @@ public partial class BankDbContext : DbContext
             entity.Property(e => e.CreatedAt).HasColumnType("datetime");
             entity.Property(e => e.Email).HasMaxLength(255).IsUnicode(false);
             entity.Property(e => e.FullName).HasMaxLength(255).IsUnicode(false);
+            entity.Property(e => e.UserName).HasMaxLength(255).IsUnicode(false);
             entity.Property(e => e.PasswordHash).HasMaxLength(255).IsUnicode(false);
             entity.Property(e => e.Role).HasMaxLength(255);
 
@@ -243,6 +245,21 @@ public partial class BankDbContext : DbContext
          CreatedAt = new DateTime(2025, 9, 22, 0, 0, 0)
      }
  );
+
+
+        modelBuilder.Entity<User>().HasData(
+     new User
+     {
+         UserId = 1,
+         UserName = "superadmin",
+         FullName = "SuperAdmin",
+         Email = "superAdmin@gmail.com",
+         Role = Roles.SuperAdmin,
+         PasswordHash = "$2a$11$uQuZz75pVmvWq0kMOmbSWeYtnhN9jI8IpjZLUGDGtYIbjvFzsnqqC",
+         BankId = null,
+         ClientId = null,
+         CreatedAt = new DateTime(2025, 01, 01)  
+     });
 
 
         OnModelCreatingPartial(modelBuilder);

@@ -21,69 +21,69 @@ namespace API_BANKING_PAYMENT.Services
             _mapper = mapper;
         }
 
-        public async Task<RegisterResponseModel> RegisterAsync(RegisterDTO model)
-        {
-            // Check if user already exists
-            var existingUser = await _repository.GetByEmailAsync(model.Email);
-            if (existingUser != null)
-            {
-                return new RegisterResponseModel
-                {
-                    IsSuccess = false,
-                    Message = "User already exists with this email."
-                };
-            }
+        //public async Task<RegisterResponseModel> RegisterAsync(RegisterDTO model)
+        //{
+        //    // Check if user already exists
+        //    var existingUser = await _repository.GetByEmailAsync(model.Email);
+        //    if (existingUser != null)
+        //    {
+        //        return new RegisterResponseModel
+        //        {
+        //            IsSuccess = false,
+        //            Message = "User already exists with this email."
+        //        };
+        //    }
 
-            // Map DTO to User entity
-            var user = _mapper.Map<User>(model);
-            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password);
-            user.CreatedAt = DateTime.UtcNow;
+        //    // Map DTO to User entity
+        //    var user = _mapper.Map<User>(model);
+        //    user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password);
+        //    user.CreatedAt = DateTime.UtcNow;
 
-            if (user.Role == "BankUser" || user.Role == "ClientUser")
-            {
-                if (!model.BankId.HasValue)
-                {
-                    return new RegisterResponseModel
-                    {
-                        IsSuccess = false,
-                        Message = "BankId is required for this role."
-                    };
-                }
+        //    if (user.Role == "BankUser" || user.Role == "ClientUser")
+        //    {
+        //        if (!model.BankId.HasValue)
+        //        {
+        //            return new RegisterResponseModel
+        //            {
+        //                IsSuccess = false,
+        //                Message = "BankId is required for this role."
+        //            };
+        //        }
 
-                var bank = await _bankService.GetBankById((int)model.BankId);
-                if (bank != null)
-                {
-                    user.BankId = bank.BankId;
-                    //user.Bank.BankName = bank.BankName;  
-                }
+        //        var bank = await _bankService.GetBankById((int)model.BankId);
+        //        if (bank != null)
+        //        {
+        //            user.BankId = bank.BankId;
+        //            //user.Bank.BankName = bank.BankName;  
+        //        }
 
-                // Extra steps for ClientUser
-                if (user.Role == "ClientUser")
-                {
-                    var client = new Client
-                    {
-                        BankId = model.BankId.Value,
-                        ClientName = user.FullName,
-                        RegisterationNumber = Guid.NewGuid().ToString(),
-                        Address = "N/A",
-                        VerificationStatus = "Pending",
-                        CreatedAt = DateTime.UtcNow
-                    };
+        //        // Extra steps for ClientUser
+        //        if (user.Role == "ClientUser")
+        //        {
+        //            var client = new Client
+        //            {
+        //                BankId = model.BankId.Value,
+        //                ClientName = user.FullName,
+        //                RegisterationNumber = Guid.NewGuid().ToString(),
+        //                Address = "N/A",
+        //                VerificationStatus = "Pending",
+        //                CreatedAt = DateTime.UtcNow
+        //            };
 
-                    await _repository.AddClientAsync(client);
-                    user.ClientId = client.ClientId;
-                }
-            }
+        //            await _repository.AddClientAsync(client);
+        //            user.ClientId = client.ClientId;
+        //        }
+        //    }
 
 
-            await _repository.Add(user);
+        //    await _repository.Add(user);
 
-            return new RegisterResponseModel
-            {
-                IsSuccess = true,
-                Message = "User registered successfully."
-            };
-        }
+        //    return new RegisterResponseModel
+        //    {
+        //        IsSuccess = true,
+        //        Message = "User registered successfully."
+        //    };
+        //}
 
         public async Task<LoginResponseModel> LoginAsync(LoginViewModel model)
         {

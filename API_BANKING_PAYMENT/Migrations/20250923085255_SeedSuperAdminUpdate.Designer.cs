@@ -4,6 +4,7 @@ using API_BANKING_PAYMENT.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace API_BANKING_PAYMENT.Migrations
 {
     [DbContext(typeof(BankDbContext))]
-    partial class BankDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250923085255_SeedSuperAdminUpdate")]
+    partial class SeedSuperAdminUpdate
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -458,12 +461,6 @@ namespace API_BANKING_PAYMENT.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
-                    b.Property<string>("UserName")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(255)");
-
                     b.HasKey("UserId")
                         .HasName("user_userid_primary");
 
@@ -483,9 +480,8 @@ namespace API_BANKING_PAYMENT.Migrations
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Email = "superAdmin@gmail.com",
                             FullName = "SuperAdmin",
-                            PasswordHash = "$2a$11$uQuZz75pVmvWq0kMOmbSWeYtnhN9jI8IpjZLUGDGtYIbjvFzsnqqC",
-                            Role = "SuperAdmin",
-                            UserName = "superadmin"
+                            PasswordHash = "$2a$11$lsCO78gNZaO0h/J8Ot5Ysu0budobc5sIEWG6ctr7ldpgpJu4qroVC",
+                            Role = "SuperAdmin"
                         });
                 });
 

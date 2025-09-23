@@ -21,6 +21,12 @@ namespace API_BANKING_PAYMENT.Respositories
 
         }
 
+        public async Task<User> GetByUsernameAsync(string username)
+        {
+            return await _context.Users
+                .FirstOrDefaultAsync(u => u.UserName == username);
+        }
+
         public async Task AddClientAsync(Client client)
         {
             _context.Clients.Add(client);

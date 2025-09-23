@@ -6,7 +6,7 @@ namespace API_BANKING_PAYMENT.Models.Entities;
 public partial class User
 {
     public long UserId { get; set; }
-
+    public string UserName { get; set; } = null!;
     public string FullName { get; set; } = null!;
 
     public string Email { get; set; } = null!;
