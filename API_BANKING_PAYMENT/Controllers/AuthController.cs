@@ -36,6 +36,19 @@ namespace API_BANKING_PAYMENT.Controllers
                 return BadRequest();
         }
 
+
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout()
+        {
+            var authHeader = Request.Headers["Authorization"].ToString();
+
+            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+                return BadRequest(new { Message = "No User Logged In" });
+
+
+            return Ok(new { Message = "Logged out successfully." });
+        }
+
         // [HttpPost("register")]
         // public async Task<IActionResult> Register([FromBody] RegisterDTO model)
         // {
