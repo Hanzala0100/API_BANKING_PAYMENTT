@@ -36,6 +36,21 @@ namespace API_BANKING_PAYMENT.Controllers
             return BadRequest();
         }
 
+
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout()
+        {
+            var authHeader = Request.Headers["Authorization"].ToString();
+
+            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+                return BadRequest(new { Message = "No User Logged In" });
+
+
+            return Ok(new BaseResponseDTO<Object> { Message = "Logged out successfully.", Success = true });
+        }
+
+
+
         // login with ReCaptcha 
         //[HttpPost("login")]
         //public async Task<IActionResult> Login([FromBody] LoginViewModel user, [FromServices] RecaptchaService recaptchaService)
@@ -59,30 +74,19 @@ namespace API_BANKING_PAYMENT.Controllers
 
 
 
-        [HttpPost("logout")]
-        public async Task<IActionResult> Logout()
-        {
-            var authHeader = Request.Headers["Authorization"].ToString();
-
-            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
-                return BadRequest(new { Message = "No User Logged In" });
 
 
-            return Ok(new { Message = "Logged out successfully." });
-        }
+        //[HttpPost("logout")]
+        //public async Task<IActionResult> Logout()
+        //{
+        //    var authHeader = Request.Headers["Authorization"].ToString();
+
+        //    if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+        //        return BadRequest(new { Message = "No User Logged In" });
 
 
-        [HttpPost("logout")]
-        public async Task<IActionResult> Logout()
-        {
-            var authHeader = Request.Headers["Authorization"].ToString();
-
-            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
-                return BadRequest(new { Message = "No User Logged In" });
-
-
-            return Ok(new { Message = "Logged out successfully." });
-        }
+        //    return Ok(new { Message = "Logged out successfully." });
+        //}
 
         // [HttpPost("register")]
         // public async Task<IActionResult> Register([FromBody] RegisterDTO model)
