@@ -1,4 +1,5 @@
 using API_BANKING_PAYMENT.Models.Entities;
+using API_BANKING_PAYMENT.Models.Settings;
 using API_BANKING_PAYMENT.Respositories;
 using API_BANKING_PAYMENT.Respositories.IRepositories;
 using API_BANKING_PAYMENT.Services;
@@ -43,8 +44,11 @@ namespace API_BANKING_PAYMENT
             //builder.Services.AddScoped<IClientService, ClientService>();
             builder.Services.AddScoped<IDocumentService, DocumentService>();
 
-
+            //Settings for 3rd party Api and Service
             builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
+            builder.Services.Configure<ReCaptchaSettings>(builder.Configuration.GetSection("ReCaptchaSettings"));
+            builder.Services.AddHttpClient(); 
+            builder.Services.AddScoped<ReCaptchaService>();
 
 
             //Admin
@@ -75,10 +79,10 @@ namespace API_BANKING_PAYMENT
 
             //Seri Logger
             Log.Logger = new LoggerConfiguration()
-    .MinimumLevel.Information()
-    .WriteTo.File("Logs/myapp-.log", rollingInterval: RollingInterval.Day)
-    .CreateLogger();
-            builder.Host.UseSerilog(); 
+            .MinimumLevel.Information()
+            .WriteTo.File("Logs/myapp-.log", rollingInterval: RollingInterval.Day)
+            .CreateLogger();
+                    builder.Host.UseSerilog(); 
 
 
             // Configure JWT to use Swagger
