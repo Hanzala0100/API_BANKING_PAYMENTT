@@ -25,14 +25,14 @@ namespace API_BANKING_PAYMENT.Services
             {
                 return new RegisterResponseModel
                 {
-                    IsSuccess = false,
+                    Success = false,
                     Message = "User already exists with this email."
                 };
             }
 
             return new RegisterResponseModel
             {
-                IsSuccess = true,
+                Success = true,
                 Message = "User registered successfully."
             };
         }

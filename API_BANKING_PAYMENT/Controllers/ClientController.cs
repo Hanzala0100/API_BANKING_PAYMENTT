@@ -25,7 +25,7 @@ namespace API_BANKING_PAYMENT.Controllers
 
             var response = await _service.RegisterAsync(model);
 
-            if (!response.IsSuccess)
+            if (!response.Success)
                 return BadRequest(response);
             return Ok(response);
         }

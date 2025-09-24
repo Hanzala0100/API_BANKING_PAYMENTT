@@ -100,16 +100,19 @@ namespace API_BANKING_PAYMENT.Services
             {
                 return new LoginResponseModel
                 {
-                    IsSuccess = false,
+                    Success = false,
                     Message = "Invalid email or password."
                 };
             }
- 
-            return new LoginResponseModel
+            var UserData = new LoginTokenRepsonse
             {
                 User = _mapper.Map<UserDTO>(existingUser),
-                IsSuccess = true,
                 Token = GenerateJWTToken(existingUser),
+            };
+            return new LoginResponseModel
+            {
+                Data = UserData,
+                Success = true,
                 Message = "Login successful.",
             };
         }
@@ -121,7 +124,6 @@ namespace API_BANKING_PAYMENT.Services
             var signingCredentials = new SigningCredentials(secretKey, SecurityAlgorithms.HmacSha256);
 
             var claims = new List<Claim>
-
                     {
 
                         new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),

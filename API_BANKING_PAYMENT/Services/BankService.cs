@@ -8,8 +8,8 @@ namespace API_BANKING_PAYMENT.Services
 {
     public class BankService: IBankService
     {
-        private readonly IConfiguration _configuration;
         private readonly IBankRepository _bankRepository;
+        private readonly IConfiguration _configuration;
         private readonly IMapper _mapper;
         private readonly ILogger<SuperAdminService> _logger;
         public BankService(IConfiguration configuration, IBankRepository bankRepository, IMapper mapper, ILogger<SuperAdminService> logger)

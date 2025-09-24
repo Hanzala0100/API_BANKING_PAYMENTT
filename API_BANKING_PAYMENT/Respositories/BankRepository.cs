@@ -20,5 +20,10 @@ namespace API_BANKING_PAYMENT.Respositories
                 .Include(b => b.Users)
                 .FirstOrDefaultAsync(b => b.BankId == id);
         }
+
+        public async Task<Bank> GetBankByName(string Name)
+        {
+            return await _context.Banks.FirstOrDefaultAsync(b => b.BankName == Name);
+        }
     }
 }

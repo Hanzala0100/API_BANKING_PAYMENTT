@@ -14,7 +14,7 @@ namespace API_BANKING_PAYMENT.Respositories
             _context = context;
         }
 
-        public async Task<T> GetById(int id)
+        public async Task<T> GetById(long id)
         {
             return await _context.Set<T>().FindAsync(id);
         }

@@ -24,7 +24,7 @@ namespace API_BANKING_PAYMENT.Controllers
             if (ModelState.IsValid)
             {
                 response = await _service.LoginAsync(user);
-                if (response.IsSuccess)
+                if (response.Success)
                 {
                     return Ok(response);
                 }
