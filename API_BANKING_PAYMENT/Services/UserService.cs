@@ -4,11 +4,9 @@ using API_BANKING_PAYMENT.Respositories.IRepositories;
 using API_BANKING_PAYMENT.Services.IServices;
 using AutoMapper;
 using Microsoft.IdentityModel.Tokens;
-using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace API_BANKING_PAYMENT.Services
 {
@@ -17,16 +15,54 @@ namespace API_BANKING_PAYMENT.Services
         private readonly IUserRepository _repository;
         private readonly IBankService _bankService;
         private readonly IMapper _mapper;
-        private readonly ILogger<SuperAdminService> _logger;
+        private readonly ILogger<UserService> _logger;  
         private readonly IConfiguration _config;
 
-        public UserService(IUserRepository repository, IBankService bankService, IMapper mapper, ILogger<SuperAdminService> logger, IConfiguration config)
+        public UserService(IUserRepository repository, IBankService bankService, IMapper mapper, ILogger<UserService> logger, IConfiguration config)
         {
             _repository = repository;
             _bankService = bankService;
             _mapper = mapper;
             _logger = logger;
             _config = config;
+        }
+
+        public async Task<LoginResponseModel> LoginAsync(LoginViewModel user)
+        {
+            try
+            {
+                var existingUser = await _repository.GetByUsernameAsync(user.Username);
+                if (existingUser == null || !BCrypt.Net.BCrypt.Verify(user.Password, existingUser.PasswordHash))
+                {
+                    return new LoginResponseModel
+                    {
+                        Success = false,
+                        Message = "Invalid username or password."
+                    };
+                }
+
+                var userData = new LoginTokenRepsonse  
+                {
+                    User = _mapper.Map<UserDTO>(existingUser),
+                    Token = GenerateJWTToken(existingUser),
+                };
+
+                return new LoginResponseModel
+                {
+                    Data = userData,
+                    Success = true,
+                    Message = "Login successful.",
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during login for user {Username}", user.Username);
+                return new LoginResponseModel
+                {
+                    Success = false,
+                    Message = "An error occurred during login."
+                };
+            }
         }
 
         //public async Task<RegisterResponseModel> RegisterAsync(RegisterDTO model)
@@ -93,30 +129,6 @@ namespace API_BANKING_PAYMENT.Services
         //    };
         //}
 
-        public async Task<LoginResponseModel> LoginAsync(LoginViewModel user)
-        {
-            var existingUser = await _repository.GetByUsernameAsync(user.Username);
-            if (existingUser == null || !BCrypt.Net.BCrypt.Verify(user.Password, existingUser.PasswordHash))
-            {
-                return new LoginResponseModel
-                {
-                    Success = false,
-                    Message = "Invalid email or password."
-                };
-            }
-            var UserData = new LoginTokenRepsonse
-            {
-                User = _mapper.Map<UserDTO>(existingUser),
-                Token = GenerateJWTToken(existingUser),
-            };
-            return new LoginResponseModel
-            {
-                Data = UserData,
-                Success = true,
-                Message = "Login successful.",
-            };
-        }
-
         private TokenDTO GenerateJWTToken(User user)
         {
             var jwtSettings = _config.GetSection("Jwt");
@@ -124,15 +136,24 @@ namespace API_BANKING_PAYMENT.Services
             var signingCredentials = new SigningCredentials(secretKey, SecurityAlgorithms.HmacSha256);
 
             var claims = new List<Claim>
-                    {
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
+                new Claim(ClaimTypes.Name, user.UserName ?? string.Empty),
+                new Claim("FullName", user.FullName ?? string.Empty), 
+                new Claim(ClaimTypes.Email, user.Email ?? string.Empty),
+                new Claim(ClaimTypes.Role, user.Role ?? string.Empty)
+            };
 
-                        new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
-                        //user name 
-                        new Claim(ClaimTypes.UserData,user.UserName?? string.Empty),
-                        new Claim(ClaimTypes.Name, user.FullName ?? string.Empty),
-                        new Claim(ClaimTypes.Email, user.Email ?? string.Empty),
-                        new Claim(ClaimTypes.Role, user.Role ?? string.Empty)
-                    };
+
+            if (user.BankId.HasValue)
+            {
+                claims.Add(new Claim("BankId", user.BankId.Value.ToString()));
+            }
+
+            if (user.ClientId.HasValue)
+            {
+                claims.Add(new Claim("ClientId", user.ClientId.Value.ToString()));
+            }
 
             var expiry = DateTime.UtcNow.AddDays(10);
             var tokenOptions = new JwtSecurityToken(
@@ -141,13 +162,12 @@ namespace API_BANKING_PAYMENT.Services
                 claims: claims,
                 expires: expiry,
                 signingCredentials: signingCredentials);
+
             return new TokenDTO
             {
                 AccessToken = new JwtSecurityTokenHandler().WriteToken(tokenOptions),
-                Expiry = expiry
+                Expiry = expiry,
             };
         }
     }
-
 }
- 
