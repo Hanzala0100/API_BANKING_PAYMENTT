@@ -16,10 +16,16 @@ public class DocumentService : IDocumentService
     private readonly Cloudinary _cloudinary;
     private readonly BankDbContext _dbContext;
     private readonly IMapper _mapper;
+    private readonly ILogger<DocumentService> _logger;
 
-    private static readonly string[] VideoExtensions = { ".mp4", ".mov", ".avi", ".mkv", ".webm", ".mpeg", ".mpg", ".m4v" };
+    private static readonly string[] VideoExtensions =
+        { ".mp4", ".mov", ".avi", ".mkv", ".webm", ".mpeg", ".mpg", ".m4v" };
 
-    public DocumentService(IOptions<CloudinarySettings> cloudSettings, BankDbContext dbContext, IMapper mapper)
+    public DocumentService(
+        IOptions<CloudinarySettings> cloudSettings,
+        BankDbContext dbContext,
+        IMapper mapper,
+        ILogger<DocumentService> logger)
     {
         _dbContext = dbContext;
         _mapper = mapper;
@@ -30,74 +36,112 @@ public class DocumentService : IDocumentService
             cloudSettings.Value.ApiSecret
         );
         _cloudinary = new Cloudinary(account);
+        _logger = logger;
     }
 
     private async Task<UploadResult> UploadToCloudinary(IFormFile file)
     {
-        if (file == null || file.Length == 0)
-            throw new ArgumentException("File is empty");
-
-        using var stream = file.OpenReadStream();
-        var fileDesc = new FileDescription(file.FileName, stream);
-
-        var contentType = file.ContentType ?? string.Empty;
-        var ext = Path.GetExtension(file.FileName)?.ToLowerInvariant() ?? string.Empty;
-
-        // 1. IMAGE
-        if (contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+        try
         {
-            var uploadParams = new ImageUploadParams
+            if (file == null || file.Length == 0)
             {
-                File = fileDesc,
-                PublicId = Guid.NewGuid().ToString("N")
-            };
-            return await _cloudinary.UploadAsync(uploadParams);
-        }
+                _logger.LogWarning("Upload attempt with empty file.");
+                throw new ArgumentException("File is empty");
+            }
 
-        // 2. VIDEO
-        if (contentType.StartsWith("video/", StringComparison.OrdinalIgnoreCase) || VideoExtensions.Contains(ext))
-        {
-            var uploadParams = new VideoUploadParams
+            using var stream = file.OpenReadStream();
+            var fileDesc = new FileDescription(file.FileName, stream);
+
+            var contentType = file.ContentType ?? string.Empty;
+            var ext = Path.GetExtension(file.FileName)?.ToLowerInvariant() ?? string.Empty;
+
+            UploadResult result;
+
+            if (contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
             {
-                File = fileDesc,
-                PublicId = Guid.NewGuid().ToString("N")
-            };
-            return await _cloudinary.UploadAsync(uploadParams);
-        }
+                var uploadParams = new ImageUploadParams
+                {
+                    File = fileDesc,
+                    PublicId = Guid.NewGuid().ToString("N")
+                };
+                result = await _cloudinary.UploadAsync(uploadParams);
+            }
+            else if (contentType.StartsWith("video/", StringComparison.OrdinalIgnoreCase) || VideoExtensions.Contains(ext))
+            {
+                var uploadParams = new VideoUploadParams
+                {
+                    File = fileDesc,
+                    PublicId = Guid.NewGuid().ToString("N")
+                };
+                result = await _cloudinary.UploadAsync(uploadParams);
+            }
+            else
+            {
+                var rawParams = new RawUploadParams
+                {
+                    File = fileDesc,
+                    PublicId = Guid.NewGuid().ToString("N")
+                };
+                result = await _cloudinary.UploadAsync(rawParams);
+            }
 
-        // 3. FALLBACK: RAW (PDF, DOCX, ZIP, etc.)
-        var rawParams = new RawUploadParams
+            if (result.Error != null)
+            {
+                _logger.LogError("Cloudinary upload failed for {FileName}: {Error}",
+                                 file.FileName, result.Error.Message);
+            }
+            else
+            {
+                _logger.LogInformation("Successfully uploaded file {FileName}, PublicId: {PublicId}",
+                                       file.FileName, result.PublicId);
+            }
+
+            return result;
+        }
+        catch (Exception ex)
         {
-            File = fileDesc,
-            PublicId = Guid.NewGuid().ToString("N")
-        };
-        return await _cloudinary.UploadAsync(rawParams);
+            _logger.LogError(ex, "Unexpected error during upload for file {FileName}", file?.FileName);
+            throw;
+        }
     }
 
     public async Task<DocumentDTO> UploadDocumentAsync(IFormFile file, long uploadedBy, long bankId, long? clientId = null, string? docType = null)
     {
-        // Upload file to Cloudinary
-        var uploadResult = await UploadToCloudinary(file);
-
-        if (uploadResult == null || uploadResult.Error != null)
-            throw new Exception(uploadResult?.Error?.Message ?? "Cloudinary upload failed");
-
-        // Save metadata in database
-        var document = new Document
+        try
         {
-            UploadedBy = uploadedBy,
-            BankId = bankId,
-            ClientId = clientId,
-            DocType = docType,
-            FileName = file.FileName,
-            FileUrl = uploadResult.SecureUrl?.ToString() ?? uploadResult.Url?.ToString(),
-            UploadedAt = DateTime.UtcNow
-        };
+            _logger.LogInformation("Starting document upload process. UploadedBy: {UploadedBy}, BankId: {BankId}, ClientId: {ClientId}, DocType: {DocType}",
+                                   uploadedBy, bankId, clientId, docType);
 
-        _dbContext.Documents.Add(document);
-        await _dbContext.SaveChangesAsync();
+            var uploadResult = await UploadToCloudinary(file);
 
-        // Map to DTO
-        return _mapper.Map<DocumentDTO>(document);
+            if (uploadResult == null || uploadResult.Error != null)
+            {
+                throw new Exception(uploadResult?.Error?.Message ?? "Upload failed");
+            }
+
+            var document = new Document
+            {
+                UploadedBy = uploadedBy,
+                BankId = bankId,
+                ClientId = clientId,
+                DocType = docType,
+                FileName = file.FileName,
+                FileUrl = uploadResult.SecureUrl?.ToString() ?? uploadResult.Url?.ToString(),
+                UploadedAt = DateTime.UtcNow
+            };
+
+            _dbContext.Documents.Add(document);
+            await _dbContext.SaveChangesAsync();
+
+            _logger.LogInformation("Document saved in database. DocumentId: {DocumentId}, FileName: {FileName}",
+                                   document.DocumentId, document.FileName);
+
+            return _mapper.Map<DocumentDTO>(document);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error uploading document. UploadedBy: {UploadedBy}, BankId: {BankId}", uploadedBy, bankId);
+            throw;
+        }
     }
 }
