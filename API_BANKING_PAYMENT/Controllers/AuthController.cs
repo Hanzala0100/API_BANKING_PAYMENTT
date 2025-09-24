@@ -33,7 +33,42 @@ namespace API_BANKING_PAYMENT.Controllers
                     return Unauthorized(response);
                 }
             }
-                return BadRequest();
+            return BadRequest();
+        }
+
+        // login with ReCaptcha 
+        //[HttpPost("login")]
+        //public async Task<IActionResult> Login([FromBody] LoginViewModel user, [FromServices] RecaptchaService recaptchaService)
+        //{
+        //    if (!ModelState.IsValid)
+        //        return BadRequest();
+
+        //    // Verify reCAPTCHA first
+        //    bool isHuman = await recaptchaService.VerifyTokenAsync(user.RecaptchaToken);
+        //    if (!isHuman)
+        //        return BadRequest(new { Message = "reCAPTCHA validation failed" });
+
+        //    // Proceed with login
+        //    var response = await _service.LoginAsync(user);
+
+        //    if (response.IsSuccess)
+        //        return Ok(response);
+        //    else
+        //        return Unauthorized(response);
+        //}
+
+
+
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout()
+        {
+            var authHeader = Request.Headers["Authorization"].ToString();
+
+            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+                return BadRequest(new { Message = "No User Logged In" });
+
+
+            return Ok(new { Message = "Logged out successfully." });
         }
 
         // [HttpPost("register")]
