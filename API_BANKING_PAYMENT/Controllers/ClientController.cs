@@ -23,7 +23,7 @@ namespace API_BANKING_PAYMENT.Controllers
             if (!ModelState.IsValid)
                 return BadRequest("Invalid request.");
 
-            var response = await _service.RegisterAsync(model);
+            var response = await _service.CreateAsync(model);
 
             if (!response.Success)
                 return BadRequest(response);
@@ -37,7 +37,7 @@ namespace API_BANKING_PAYMENT.Controllers
             if (!ModelState.IsValid)
                 return BadRequest("Invalid request.");
             var isUpdated = await _service.UpdateAsync(id, model);
-            if (!isUpdated)
+            if (!isUpdated.Success)
                 return NotFound(new { Message = "Employee not found." });
             return NoContent();
         }
@@ -47,7 +47,7 @@ namespace API_BANKING_PAYMENT.Controllers
         public async Task<IActionResult> DeleteEmployee(int id)
         {
             var isDeleted = await _service.DeleteAsync(id);
-            if (!isDeleted)
+            if (!isDeleted.Success)
                 return NotFound(new { Message = "Employee not found." });
             return NoContent();
         }
