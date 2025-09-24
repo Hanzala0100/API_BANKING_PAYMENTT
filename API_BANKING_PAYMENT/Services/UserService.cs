@@ -3,7 +3,11 @@ using API_BANKING_PAYMENT.Models.Entities;
 using API_BANKING_PAYMENT.Respositories.IRepositories;
 using API_BANKING_PAYMENT.Services.IServices;
 using AutoMapper;
+using Microsoft.IdentityModel.Tokens;
 using System;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace API_BANKING_PAYMENT.Services
@@ -14,13 +18,15 @@ namespace API_BANKING_PAYMENT.Services
         private readonly IBankService _bankService;
         private readonly IMapper _mapper;
         private readonly ILogger<SuperAdminService> _logger;
+        private readonly IConfiguration _config;
 
-        public UserService(IUserRepository repository, IBankService bankService, IMapper mapper, ILogger<SuperAdminService> logger)
+        public UserService(IUserRepository repository, IBankService bankService, IMapper mapper, ILogger<SuperAdminService> logger, IConfiguration config)
         {
             _repository = repository;
             _bankService = bankService;
             _mapper = mapper;
             _logger = logger;
+            _config = config;
         }
 
         //public async Task<RegisterResponseModel> RegisterAsync(RegisterDTO model)
@@ -87,14 +93,10 @@ namespace API_BANKING_PAYMENT.Services
         //    };
         //}
 
-        public async Task<LoginResponseModel> LoginAsync(LoginViewModel model)
+        public async Task<LoginResponseModel> LoginAsync(LoginViewModel user)
         {
-            var existingUser = await _repository.GetByUsernameAsync(model.Username);
-            bool verfiedUser = BCrypt.Net.BCrypt.Verify(model.Password, existingUser.PasswordHash);
-            string amdinHash = BCrypt.Net.BCrypt.HashPassword("Admin#123");
-            Console.WriteLine(amdinHash);
-            Console.WriteLine(verfiedUser);
-            if (existingUser == null || !verfiedUser)
+            var existingUser = await _repository.GetByUsernameAsync(user.Username);
+            if (existingUser == null || !BCrypt.Net.BCrypt.Verify(user.Password, existingUser.PasswordHash))
             {
                 return new LoginResponseModel
                 {
@@ -102,17 +104,48 @@ namespace API_BANKING_PAYMENT.Services
                     Message = "Invalid email or password."
                 };
             }
-
-            var userDto = _mapper.Map<UserDTO>(existingUser);
-
-            _logger.LogInformation("User Logged in Successfully, UserId: ",userDto.FullName);
+ 
             return new LoginResponseModel
             {
-                User = userDto,
+                User = _mapper.Map<UserDTO>(existingUser),
                 IsSuccess = true,
-                Message = "Login successful."
+                Token = GenerateJWTToken(existingUser),
+                Message = "Login successful.",
             };
         }
 
+        private TokenDTO GenerateJWTToken(User user)
+        {
+            var jwtSettings = _config.GetSection("Jwt");
+            var secretKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Key"]));
+            var signingCredentials = new SigningCredentials(secretKey, SecurityAlgorithms.HmacSha256);
+
+            var claims = new List<Claim>
+
+                    {
+
+                        new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
+                        //user name 
+                        new Claim(ClaimTypes.UserData,user.UserName?? string.Empty),
+                        new Claim(ClaimTypes.Name, user.FullName ?? string.Empty),
+                        new Claim(ClaimTypes.Email, user.Email ?? string.Empty),
+                        new Claim(ClaimTypes.Role, user.Role ?? string.Empty)
+                    };
+
+            var expiry = DateTime.UtcNow.AddDays(10);
+            var tokenOptions = new JwtSecurityToken(
+                issuer: jwtSettings["Issuer"],
+                audience: jwtSettings["Audience"],
+                claims: claims,
+                expires: expiry,
+                signingCredentials: signingCredentials);
+            return new TokenDTO
+            {
+                AccessToken = new JwtSecurityTokenHandler().WriteToken(tokenOptions),
+                Expiry = expiry
+            };
+        }
     }
+
 }
+ 
