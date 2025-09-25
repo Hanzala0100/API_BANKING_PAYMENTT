@@ -25,5 +25,6 @@ namespace API_BANKING_PAYMENT.Respositories
         {
             return await _context.Banks.FirstOrDefaultAsync(b => b.BankName == Name);
         }
+
     }
 }
