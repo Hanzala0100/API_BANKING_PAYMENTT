@@ -7,7 +7,6 @@ namespace API_BANKING_PAYMENT.Respositories.IRepositories
     public interface IBeneficiaryRepository : IRepository<Beneficiary>
     {
         Task<Beneficiary> GetBeneficiaryById(long Id);
-        Task<List<BeneficiaryDTO>> GetAllBeneficiariesById(long Id);
         Task<List<BeneficiaryDTO>> GetAllBeneficiariesByClientId(long Id);
     }
 }
