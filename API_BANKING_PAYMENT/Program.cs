@@ -46,6 +46,7 @@ namespace API_BANKING_PAYMENT
             //builder.Services.AddScoped<IClientService, ClientService>();
 
             //Document
+            builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
             builder.Services.AddScoped<IDocumentService, DocumentService>();
 
             //Settings for 3rd party Api and Service

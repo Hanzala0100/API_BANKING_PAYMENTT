@@ -32,7 +32,11 @@ namespace API_BANKING_PAYMENT.Respositories
                 .FirstOrDefaultAsync(b => b.ClientId == clientId && b.AccountNumber == accountNumber && b.Ifsccode == ifscCode);
         }
 
-
+        public async Task<Beneficiary> GetBeneficiaryByAccountNumber(long clientId, long accountNumber)
+        {
+            return await _context.Beneficiaries
+                .FirstOrDefaultAsync(b => b.ClientId == clientId && b.AccountNumber == accountNumber);
+        }
 
 
     }

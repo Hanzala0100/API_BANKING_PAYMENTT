@@ -1,21 +1,17 @@
 ﻿using API_BANKING_PAYMENT.Models.DTO;
 using API_BANKING_PAYMENT.Models.Entities;
 using API_BANKING_PAYMENT.Models.Settings;
+using API_BANKING_PAYMENT.Respositories.IRepositories;
 using AutoMapper;
 using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
-using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Logging;
-using System;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
 
 public class DocumentService : IDocumentService
 {
     private readonly Cloudinary _cloudinary;
-    private readonly BankDbContext _dbContext;
+    private readonly IDocumentRepository _repository;
     private readonly IMapper _mapper;
     private readonly ILogger<DocumentService> _logger;
 
@@ -24,11 +20,11 @@ public class DocumentService : IDocumentService
 
     public DocumentService(
         IOptions<CloudinarySettings> cloudSettings,
-        BankDbContext dbContext,
+        IDocumentRepository repository,
         IMapper mapper,
         ILogger<DocumentService> logger)
     {
-        _dbContext = dbContext;
+        _repository = repository;
         _mapper = mapper;
 
         var account = new Account(
@@ -87,18 +83,10 @@ public class DocumentService : IDocumentService
         return result;
     }
 
-    public async Task<BaseResponseDTO<DocumentDTO>> UploadDocumentAsync(
-        IFormFile file,
-        long uploadedBy,
-        long bankId,
-        long? clientId = null,
-        string? docType = null)
+    public async Task<BaseResponseDTO<DocumentDTO>> UploadDocumentAsync(IFormFile file, long uploadedBy, long bankId, long? clientId = null, string? docType = null)
     {
         try
         {
-            _logger.LogInformation("Starting document upload. UploadedBy: {UploadedBy}, BankId: {BankId}, ClientId: {ClientId}, DocType: {DocType}",
-                uploadedBy, bankId, clientId, docType);
-
             var uploadResult = await UploadToCloudinary(file);
 
             if (uploadResult == null || uploadResult.Error != null)
@@ -119,8 +107,7 @@ public class DocumentService : IDocumentService
                 UploadedAt = DateTime.UtcNow
             };
 
-            _dbContext.Documents.Add(document);
-            await _dbContext.SaveChangesAsync();
+            _repository.Add(document);
 
             _logger.LogInformation("Document saved in DB. DocumentId: {DocumentId}, FileName: {FileName}",
                 document.DocumentId, document.FileName);
@@ -134,4 +121,141 @@ public class DocumentService : IDocumentService
             return BaseResponseDTO<DocumentDTO>.ErrorResult("An error occurred while uploading document.", new() { ex.Message });
         }
     }
+
+    public async Task<BaseResponseDTO<bool>> DeleteDocumentAsync(long documentId)
+    {
+        try
+        {
+            var document = await _repository.GetById(documentId);
+
+            if (document == null)
+            {
+                return new BaseResponseDTO<bool>
+                {
+                    Success = false,
+                    Message = "Document not found.",
+                    Data = false
+                };
+            }
+
+            _repository.Delete(document);
+            _logger.LogInformation("Document with ID {DocumentId} deleted successfully.", documentId);
+            return new BaseResponseDTO<bool>
+            {
+                Success = true,
+                Message = "Document deleted successfully.",
+                Data = true
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error while deleting document with ID {DocumentId}", documentId);
+
+            return new BaseResponseDTO<bool>
+            {
+                Success = false,
+                Message = "An error occurred while deleting the document.",
+                Data = false
+            };
+        }
+    }
+
+    public async Task<BaseResponseDTO<DocumentDTO>> GetDocumentByIdAsync(long documentId)
+    {
+        try
+        {
+            var document = await _repository.GetById(documentId);
+
+            if (document == null)
+            {
+                return new BaseResponseDTO<DocumentDTO>
+                {
+                    Success = false,
+                    Message = "Document not found.",
+                    Data = null
+                };
+            }
+
+            var documentDto = new DocumentDTO
+            {
+                DocumentId = document.DocumentId,
+                FileName = document.FileName,
+                UploadedBy = document.UploadedBy,
+                BankId = document.BankId,
+                ClientId = document.ClientId,
+                DocType = document.DocType,
+                UploadedAt = document.UploadedAt,
+                FileUrl = document.FileUrl
+            };
+            _logger.LogInformation("Document with ID {DocumentId} retrieved successfully.", documentId);
+            return new BaseResponseDTO<DocumentDTO>
+            {
+                Success = true,
+                Message = "Document retrieved successfully.",
+                Data = documentDto
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error while retrieving document with ID {DocumentId}", documentId);
+
+            return new BaseResponseDTO<DocumentDTO>
+            {
+                Success = false,
+                Message = "An error occurred while retrieving the document.",
+                Data = null
+            };
+        }
+    }
+
+    public async Task<BaseResponseDTO<DocumentDTO>> UpdateDocumentAsync(long documentId, IFormFile newFile)
+    {
+        try
+        {
+            var document = await _repository.GetById(documentId);
+
+            if (document == null)
+            {
+                return new BaseResponseDTO<DocumentDTO>
+                {
+                    Success = false,
+                    Message = "Document not found.",
+                    Data = null
+                };
+            }
+
+            var uploadResult = await UploadToCloudinary(newFile);
+
+            if (uploadResult == null || uploadResult.Error != null)
+            {
+                var errorMsg = uploadResult?.Error?.Message ?? "Upload failed";
+                _logger.LogError("Cloudinary upload failed during update: {Error}", errorMsg);
+
+                return BaseResponseDTO<DocumentDTO>.ErrorResult(errorMsg);
+            }
+
+            document.FileName = newFile.FileName;
+            document.FileUrl = uploadResult.SecureUrl?.ToString() ?? uploadResult.Url?.ToString();
+            document.UploadedAt = DateTime.UtcNow;
+
+            _repository.Update(document);
+
+            var dto = _mapper.Map<DocumentDTO>(document);
+
+            _logger.LogInformation(" Document updated successfully. DocumentId: {DocumentId}, FileName: {FileName}",
+                document.DocumentId, document.FileName);
+
+            return BaseResponseDTO<DocumentDTO>.SuccessResult(dto, "Document updated successfully");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error while updating document with ID {DocumentId}", documentId);
+
+            return BaseResponseDTO<DocumentDTO>.ErrorResult(
+                "An error occurred while updating the document.",
+                new() { ex.Message }
+            );
+        }
+    }
+
 }

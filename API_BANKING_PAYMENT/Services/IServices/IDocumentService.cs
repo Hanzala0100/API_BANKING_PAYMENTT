@@ -11,4 +11,9 @@ public interface IDocumentService
         long? clientId = null,
         string? docType = null
     );
+
+    Task<BaseResponseDTO<bool>> DeleteDocumentAsync(long documentId);
+    Task<BaseResponseDTO<DocumentDTO>> GetDocumentByIdAsync(long documentId);
+    Task<BaseResponseDTO<DocumentDTO>> UpdateDocumentAsync(long documentId, IFormFile newFile);
 }
+
