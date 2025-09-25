@@ -26,12 +26,6 @@ namespace API_BANKING_PAYMENT.Respositories
             return await _context.Beneficiaries
                 .FirstOrDefaultAsync(b => b.BeneficiaryId == id);
         }
-        public async Task<Beneficiary> GetByClientAndAccountAsync(long clientId, long accountNumber, string ifscCode)
-        {
-            return await _context.Beneficiaries
-                .FirstOrDefaultAsync(b => b.ClientId == clientId && b.AccountNumber == accountNumber && b.Ifsccode == ifscCode);
-        }
-
         public async Task<Beneficiary> GetBeneficiaryByAccountNumber(long clientId, long accountNumber)
         {
             return await _context.Beneficiaries
