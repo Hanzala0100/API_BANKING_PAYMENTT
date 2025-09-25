@@ -7,7 +7,7 @@ namespace API_BANKING_PAYMENT.Respositories.IRepositories
     public interface IBeneficiaryRepository : IRepository<Beneficiary>
     {
         Task<Beneficiary> GetBeneficiaryById(long Id);
-        Task<List<BeneficiaryDTO>> GetAllBeneficiariesByClientId(long Id);
+        Task<IEnumerable<Beneficiary>> GetAllBeneficiariesByClientId(long Id);
         Task<Beneficiary> GetByClientAndAccountAsync(long clientId, long accountNumber, string ifscCode);
     }
 }
