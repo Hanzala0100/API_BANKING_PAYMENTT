@@ -5,7 +5,6 @@
     {
         public string ClientName { get; set; }
         public string RegisterationNumber { get; set; }
-        public string VerificationStatus { get; set; }
         public string Address { get; set; } = null!;
         public long BankId { get; set; }
         public string BankName { get; set; }
@@ -17,6 +16,8 @@
         public string RegisterationNumber { get; set; }
         public string Address { get; set; } = null!;
         public string VerificationStatus { get; set; }
+        public long? VerifiedBy { get; set; }
+        public DateTime? VerifiedAt { get; set; }
         public long BankId { get; set; }
         public string BankName { get; set; }
         public int TotalEmployees { get; set; }

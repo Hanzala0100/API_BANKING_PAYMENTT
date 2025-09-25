@@ -4,6 +4,7 @@ using API_BANKING_PAYMENT.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace API_BANKING_PAYMENT.Migrations
 {
     [DbContext(typeof(BankDbContext))]
-    partial class BankDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250925210320_updatedClientForVerificationData")]
+    partial class updatedClientForVerificationData
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -61,6 +64,44 @@ namespace API_BANKING_PAYMENT.Migrations
                         .HasName("bank_bankid_primary");
 
                     b.ToTable("Bank", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            BankId = 1L,
+                            Address = "Madam Cama Road, Mumbai, India",
+                            BankName = "State Bank of India",
+                            ContactEmail = "contact@sbi.co.in",
+                            ContactPhone = "1800-123-456",
+                            CreatedAt = new DateTime(2025, 9, 22, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        },
+                        new
+                        {
+                            BankId = 2L,
+                            Address = "Mumbai, Maharashtra, India",
+                            BankName = "HDFC Bank",
+                            ContactEmail = "contact@hdfcbank.com",
+                            ContactPhone = "1800-234-567",
+                            CreatedAt = new DateTime(2025, 9, 22, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        },
+                        new
+                        {
+                            BankId = 3L,
+                            Address = "Mumbai, Maharashtra, India",
+                            BankName = "ICICI Bank",
+                            ContactEmail = "contact@icicibank.com",
+                            ContactPhone = "1800-345-678",
+                            CreatedAt = new DateTime(2025, 9, 22, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        },
+                        new
+                        {
+                            BankId = 4L,
+                            Address = "Mumbai, Maharashtra, India",
+                            BankName = "Axis Bank",
+                            ContactEmail = "contact@axisbank.com",
+                            ContactPhone = "1800-456-789",
+                            CreatedAt = new DateTime(2025, 9, 22, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        });
                 });
 
             modelBuilder.Entity("API_BANKING_PAYMENT.Models.Entities.Beneficiary", b =>
@@ -139,30 +180,15 @@ namespace API_BANKING_PAYMENT.Migrations
                         .IsUnicode(false)
                         .HasColumnType("varchar(255)");
 
-                    b.Property<string>("VerificationNotes")
-                        .HasMaxLength(1000)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(1000)");
-
                     b.Property<string>("VerificationStatus")
                         .IsRequired()
-                        .ValueGeneratedOnAdd()
                         .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)")
-                        .HasDefaultValue("Pending");
-
-                    b.Property<DateTime?>("VerifiedAt")
-                        .HasColumnType("datetime");
-
-                    b.Property<long?>("VerifiedBy")
-                        .HasColumnType("bigint");
+                        .HasColumnType("nvarchar(255)");
 
                     b.HasKey("ClientId")
                         .HasName("client_clientid_primary");
 
                     b.HasIndex("BankId");
-
-                    b.HasIndex("VerifiedBy");
 
                     b.HasIndex(new[] { "RegisterationNumber" }, "client_registerationnumber_unique")
                         .IsUnique();
@@ -484,14 +510,7 @@ namespace API_BANKING_PAYMENT.Migrations
                         .HasForeignKey("BankId")
                         .HasConstraintName("client_bankid_foreign");
 
-                    b.HasOne("API_BANKING_PAYMENT.Models.Entities.User", "VerifiedByNavigation")
-                        .WithMany()
-                        .HasForeignKey("VerifiedBy")
-                        .HasConstraintName("client_verifiedby_foreign");
-
                     b.Navigation("Bank");
-
-                    b.Navigation("VerifiedByNavigation");
                 });
 
             modelBuilder.Entity("API_BANKING_PAYMENT.Models.Entities.Document", b =>

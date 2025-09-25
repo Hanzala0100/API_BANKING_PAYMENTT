@@ -75,12 +75,18 @@ public partial class BankDbContext : DbContext
             entity.Property(e => e.ClientName).HasMaxLength(255).IsUnicode(false);
             entity.Property(e => e.CreatedAt).HasColumnType("datetime");
             entity.Property(e => e.RegisterationNumber).HasMaxLength(255).IsUnicode(false);
-            entity.Property(e => e.VerificationStatus).HasMaxLength(255);
+            entity.Property(e => e.VerificationStatus).HasMaxLength(255).HasDefaultValue("Pending");
+            entity.Property(e => e.VerificationNotes).HasMaxLength(1000).IsUnicode(false);
+            entity.Property(e => e.VerifiedAt).HasColumnType("datetime");
 
             entity.HasOne(d => d.Bank).WithMany(p => p.Clients)
                 .HasForeignKey(d => d.BankId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("client_bankid_foreign");
+
+            entity.HasOne(d => d.VerifiedByNavigation).WithMany()
+                .HasForeignKey(d => d.VerifiedBy)
+                .HasConstraintName("client_verifiedby_foreign");
         });
 
         modelBuilder.Entity<Document>(entity =>
@@ -208,44 +214,7 @@ public partial class BankDbContext : DbContext
                 .HasConstraintName("user_clientid_foreign");
         });
 
-        modelBuilder.Entity<Bank>().HasData(
-     new Bank
-     {
-         BankId = 1,
-         BankName = "State Bank of India",
-         Address = "Madam Cama Road, Mumbai, India",
-         ContactEmail = "contact@sbi.co.in",
-         ContactPhone = "1800-123-456",
-         CreatedAt = new DateTime(2025, 9, 22, 0, 0, 0)  
-     },
-     new Bank
-     {
-         BankId = 2,
-         BankName = "HDFC Bank",
-         Address = "Mumbai, Maharashtra, India",
-         ContactEmail = "contact@hdfcbank.com",
-         ContactPhone = "1800-234-567",
-         CreatedAt = new DateTime(2025, 9, 22, 0, 0, 0)
-     },
-     new Bank
-     {
-         BankId = 3,
-         BankName = "ICICI Bank",
-         Address = "Mumbai, Maharashtra, India",
-         ContactEmail = "contact@icicibank.com",
-         ContactPhone = "1800-345-678",
-         CreatedAt = new DateTime(2025, 9, 22, 0, 0, 0)
-     },
-     new Bank
-     {
-         BankId = 4,
-         BankName = "Axis Bank",
-         Address = "Mumbai, Maharashtra, India",
-         ContactEmail = "contact@axisbank.com",
-         ContactPhone = "1800-456-789",
-         CreatedAt = new DateTime(2025, 9, 22, 0, 0, 0)
-     }
- );
+      
 
         modelBuilder.Entity<User>().HasData(
      new User

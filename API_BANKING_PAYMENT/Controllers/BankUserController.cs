@@ -1,8 +1,9 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using API_BANKING_PAYMENT.Models.Enum;
 using API_BANKING_PAYMENT.Models.DTO;
 using API_BANKING_PAYMENT.Services.IServices;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 
 namespace API_BANKING_PAYMENT.Controllers
 {
@@ -128,14 +129,139 @@ namespace API_BANKING_PAYMENT.Controllers
             }
         }
 
-        // CLIENT USER ENDPOINTS
+        // CLIENT VERIFICATION ENDPOINTS
 
-        [HttpPost("clients/{clientId}/users")]
-        public async Task<ActionResult<BaseResponseDTO<UserDTO>>> CreateClientUser(long clientId, [FromBody] RegisterDTO userDTO)
+        [HttpPut("clients/{clientId}/verify")]
+        public async Task<ActionResult<BaseResponseDTO<ClientDTO>>> VerifyClient(long clientId, [FromBody] VerifyClientRequestDTO request)
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(BaseResponseDTO<UserDTO>.ErrorResult("Invalid input data"));
+                return BadRequest(BaseResponseDTO<ClientDTO>.ErrorResult("Invalid input data"));
+            }
+
+            if (clientId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<ClientDTO>.ErrorResult("Invalid client ID"));
+            }
+
+            // Get current user ID from claims
+            var currentUserId = long.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
+
+            var result = await _bankUserService.VerifyClientAsync(clientId, currentUserId, request.VerificationStatus, request.Notes);
+
+            if (result.Success)
+            {
+                _logger.LogInformation("Client verification updated: {ClientId}, Status: {Status}", clientId, request.VerificationStatus);
+                return Ok(result);
+            }
+            else
+            {
+                _logger.LogWarning("Client verification failed: {Message}", result.Message);
+                return BadRequest(result);
+            }
+        }
+
+        [HttpGet("clients/verification-status/{status}")]
+        public async Task<ActionResult<BaseResponseDTO<IEnumerable<ClientDTO>>>> GetClientsByVerificationStatus(string status)
+        {
+            if (string.IsNullOrEmpty(status) || !VerificationStatus.GetAllStatuses().Contains(status))
+            {
+                return BadRequest(BaseResponseDTO<IEnumerable<ClientDTO>>.ErrorResult("Invalid verification status"));
+            }
+
+            var result = await _bankUserService.GetClientsByVerificationStatusAsync(status);
+
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            else
+            {
+                return StatusCode(500, result);
+            }
+        }
+
+        [HttpGet("clients/pending-verification")]
+        public async Task<ActionResult<BaseResponseDTO<IEnumerable<ClientDTO>>>> GetClientsWithPendingVerification()
+        {
+            var result = await _bankUserService.GetClientsWithPendingVerificationAsync();
+
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            else
+            {
+                return StatusCode(500, result);
+            }
+        }
+
+        // CLIENT DOCUMENT ENDPOINTS
+
+        [HttpPost("clients/{clientId}/documents")]
+        public async Task<ActionResult<BaseResponseDTO<DocumentDTO>>> UploadClientDocument(long clientId, [FromForm] UploadDocumentRequestDTO request)
+        {
+            if (clientId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<DocumentDTO>.ErrorResult("Invalid client ID"));
+            }
+
+            if (request.File == null || request.File.Length == 0)
+            {
+                return BadRequest(BaseResponseDTO<DocumentDTO>.ErrorResult("File is required"));
+            }
+
+            if (string.IsNullOrEmpty(request.DocType))
+            {
+                return BadRequest(BaseResponseDTO<DocumentDTO>.ErrorResult("Document type is required"));
+            }
+
+            // Get current user ID and bank ID from claims
+            var currentUserId = long.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
+            var currentUserBankId = long.Parse(User.FindFirst("BankId")?.Value ?? "0");
+
+            var result = await _bankUserService.UploadClientDocumentAsync(clientId, request.File, currentUserId, currentUserBankId, request.DocType);
+
+            if (result.Success)
+            {
+                _logger.LogInformation("Document uploaded successfully for client ID: {ClientId}", clientId);
+                return Ok(result);
+            }
+            else
+            {
+                _logger.LogWarning("Document upload failed: {Message}", result.Message);
+                return BadRequest(result);
+            }
+        }
+
+        [HttpGet("clients/{clientId}/documents")]
+        public async Task<ActionResult<BaseResponseDTO<IEnumerable<DocumentDTO>>>> GetClientDocuments(long clientId)
+        {
+            if (clientId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<IEnumerable<DocumentDTO>>.ErrorResult("Invalid client ID"));
+            }
+
+            var result = await _bankUserService.GetClientDocumentsAsync(clientId);
+
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            else
+            {
+                return NotFound(result);
+            }
+        }
+
+        // CLIENT USER ENDPOINTS
+
+        [HttpPost("clients/{clientId}/users")]
+        public async Task<ActionResult<BaseResponseDTO<ClientUserCreationDTO>>> CreateClientUser(long clientId, [FromBody] RegisterDTO userDTO)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(BaseResponseDTO<ClientUserCreationDTO>.ErrorResult("Invalid input data"));
             }
 
             userDTO.ClientId = clientId;
@@ -143,7 +269,7 @@ namespace API_BANKING_PAYMENT.Controllers
 
             if (result.Success)
             {
-                _logger.LogInformation("Client user created successfully for client ID: {ClientId}", result.Data.ClientId);
+                _logger.LogInformation("Client user created successfully for client ID: {ClientId}", clientId);
                 return Ok(result);
             }
             else

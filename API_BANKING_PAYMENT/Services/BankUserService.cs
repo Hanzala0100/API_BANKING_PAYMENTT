@@ -1,8 +1,11 @@
-﻿using API_BANKING_PAYMENT.Models.DTO;
-using API_BANKING_PAYMENT.Services.IServices;
-using API_BANKING_PAYMENT.Respositories.IRepositories;
-using AutoMapper;
+﻿using API_BANKING_PAYMENT.Models.Enum;
+using API_BANKING_PAYMENT.Models.DTO;
 using API_BANKING_PAYMENT.Models.Entities;
+using API_BANKING_PAYMENT.Models.Enum;
+using API_BANKING_PAYMENT.Respositories.IRepositories;
+using API_BANKING_PAYMENT.Services.IServices;
+using AutoMapper;
+using Microsoft.AspNetCore.Http;
 
 namespace API_BANKING_PAYMENT.Services
 {
@@ -10,15 +13,23 @@ namespace API_BANKING_PAYMENT.Services
     {
         private readonly IClientRepository _clientRepository;
         private readonly IUserRepository _userRepository;
+        private readonly IDocumentService _documentService;
         private readonly IConfiguration _configuration;
         private readonly IMapper _mapper;
         private readonly ILogger<BankUserService> _logger;
 
-        public BankUserService(IConfiguration configuration, IClientRepository clientRepository, IUserRepository userRepository, IMapper mapper, ILogger<BankUserService> logger)
+        public BankUserService(
+            IConfiguration configuration,
+            IClientRepository clientRepository,
+            IUserRepository userRepository,
+            IDocumentService documentService,
+            IMapper mapper,
+            ILogger<BankUserService> logger)
         {
             _configuration = configuration;
             _clientRepository = clientRepository;
             _userRepository = userRepository;
+            _documentService = documentService;
             _mapper = mapper;
             _logger = logger;
         }
@@ -45,8 +56,8 @@ namespace API_BANKING_PAYMENT.Services
                     ClientName = clientDTO.ClientName,
                     RegisterationNumber = clientDTO.RegisterationNumber,
                     BankId = clientDTO.BankId,
-                    Address = clientDTO.Address ?? string.Empty,  
-                    VerificationStatus = "Completed",
+                    Address = clientDTO.Address ?? string.Empty,
+                    VerificationStatus = VerificationStatus.Pending,
                     CreatedAt = DateTime.UtcNow
                 };
 
@@ -57,15 +68,16 @@ namespace API_BANKING_PAYMENT.Services
                     ClientId = createdClient.ClientId,
                     ClientName = createdClient.ClientName,
                     RegisterationNumber = createdClient.RegisterationNumber,
+                    Address = createdClient.Address,
                     VerificationStatus = createdClient.VerificationStatus,
-                    BankName = clientDTO.BankName,  
-                    Address = clientDTO.Address,
+                    BankId = clientDTO.BankId,
+                    BankName = clientDTO.BankName,
                     TotalEmployees = 0,
                     TotalBeneficiaries = 0,
                     TotalPayments = 0
                 };
 
-                return BaseResponseDTO<ClientDTO>.SuccessResult(clientDto, "Client added successfully");
+                return BaseResponseDTO<ClientDTO>.SuccessResult(clientDto, $"Client added successfully. Verification status: {VerificationStatus.Pending}");
             }
             catch (Exception ex)
             {
@@ -73,12 +85,151 @@ namespace API_BANKING_PAYMENT.Services
                 return BaseResponseDTO<ClientDTO>.ErrorResult("Error occurred while creating client", new List<string> { ex.Message });
             }
         }
+
+        public async Task<BaseResponseDTO<DocumentDTO>> UploadClientDocumentAsync(long clientId, IFormFile file, long uploadedBy, long bankId, string docType)
+        {
+            try
+            {
+                var client = await _clientRepository.GetById(clientId);
+                if (client == null)
+                    return BaseResponseDTO<DocumentDTO>.ErrorResult("Client not found");
+
+                if (file == null || file.Length == 0)
+                    return BaseResponseDTO<DocumentDTO>.ErrorResult("File is required");
+
+                var validDocTypes = new[] { "BusinessLicense", "KYCDocument", "TaxCertificate", "BankStatement", "AddressProof", "IdentityProof" };
+                if (!validDocTypes.Contains(docType))
+                    return BaseResponseDTO<DocumentDTO>.ErrorResult("Invalid document type");
+
+                var result = await _documentService.UploadDocumentAsync(file, uploadedBy, bankId, clientId, docType);
+
+                if (result.Success)
+                {
+                    _logger.LogInformation("Document uploaded successfully for client ID: {ClientId}, Document Type: {DocType}", clientId, docType);
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while uploading document for client ID: {ClientId}", clientId);
+                return BaseResponseDTO<DocumentDTO>.ErrorResult("Error occurred while uploading document", new List<string> { ex.Message });
+            }
+        }
+
+        public async Task<BaseResponseDTO<ClientDTO>> VerifyClientAsync(long clientId, long verifiedBy, string verificationStatus, string notes)
+        {
+            try
+            {
+                var client = await _clientRepository.GetById(clientId);
+                if (client == null)
+                    return BaseResponseDTO<ClientDTO>.ErrorResult("Client not found");
+
+                if (!VerificationStatus.GetAllStatuses().Contains(verificationStatus))
+                    return BaseResponseDTO<ClientDTO>.ErrorResult("Invalid verification status");
+
+                if (!VerificationStatus.IsValidTransition(client.VerificationStatus, verificationStatus))
+                    return BaseResponseDTO<ClientDTO>.ErrorResult($"Invalid status transition from {client.VerificationStatus} to {verificationStatus}");
+
+                client.VerificationStatus = verificationStatus;
+                client.VerifiedBy = verifiedBy;
+                client.VerifiedAt = DateTime.UtcNow;
+                client.VerificationNotes = notes;
+
+                var result = await _clientRepository.Update(client);
+
+                if (result)
+                {
+                    var clientDTO = _mapper.Map<ClientDTO>(client);
+                    _logger.LogInformation("Client verification status updated: Client ID: {ClientId}, From: {OldStatus}, To: {NewStatus}",
+                        clientId, client.VerificationStatus, verificationStatus);
+
+                    return BaseResponseDTO<ClientDTO>.SuccessResult(clientDTO, $"Client verification status updated to {verificationStatus}");
+                }
+                else
+                {
+                    return BaseResponseDTO<ClientDTO>.ErrorResult("Failed to update client verification status");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while verifying client with ID: {ClientId}", clientId);
+                return BaseResponseDTO<ClientDTO>.ErrorResult("Error occurred while verifying client", new List<string> { ex.Message });
+            }
+        }
+
+        public async Task<BaseResponseDTO<IEnumerable<DocumentDTO>>> GetClientDocumentsAsync(long clientId)
+        {
+            try
+            {
+                var client = await _clientRepository.GetById(clientId);
+                if (client == null)
+                    return BaseResponseDTO<IEnumerable<DocumentDTO>>.ErrorResult("Client not found");
+
+                var documents = await _clientRepository.GetClientDocumentsAsync(clientId);
+                var documentDTOs = _mapper.Map<IEnumerable<DocumentDTO>>(documents);
+
+                return BaseResponseDTO<IEnumerable<DocumentDTO>>.SuccessResult(documentDTOs, "Client documents retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while retrieving documents for client ID: {ClientId}", clientId);
+                return BaseResponseDTO<IEnumerable<DocumentDTO>>.ErrorResult("Error occurred while retrieving client documents", new List<string> { ex.Message });
+            }
+        }
+
+        public async Task<BaseResponseDTO<IEnumerable<ClientDTO>>> GetClientsByVerificationStatusAsync(string verificationStatus)
+        {
+            try
+            {
+                if (!VerificationStatus.GetAllStatuses().Contains(verificationStatus))
+                    return BaseResponseDTO<IEnumerable<ClientDTO>>.ErrorResult("Invalid verification status");
+
+                var clients = await _clientRepository.GetClientsByVerificationStatusAsync(verificationStatus);
+                var clientDTOs = _mapper.Map<IEnumerable<ClientDTO>>(clients);
+
+                return BaseResponseDTO<IEnumerable<ClientDTO>>.SuccessResult(clientDTOs, $"Clients with status '{verificationStatus}' retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while retrieving clients with status: {Status}", verificationStatus);
+                return BaseResponseDTO<IEnumerable<ClientDTO>>.ErrorResult("Error occurred while retrieving clients", new List<string> { ex.Message });
+            }
+        }
+
+        public async Task<BaseResponseDTO<IEnumerable<ClientDTO>>> GetClientsWithPendingVerificationAsync()
+        {
+            try
+            {
+                var clients = await _clientRepository.GetClientsWithPendingVerificationAsync();
+                var clientDTOs = _mapper.Map<IEnumerable<ClientDTO>>(clients);
+
+                return BaseResponseDTO<IEnumerable<ClientDTO>>.SuccessResult(clientDTOs, "Clients with pending verification retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while retrieving clients with pending verification");
+                return BaseResponseDTO<IEnumerable<ClientDTO>>.ErrorResult("Error occurred while retrieving clients", new List<string> { ex.Message });
+            }
+        }
+
         public async Task<BaseResponseDTO<ClientUserCreationDTO>> CreateClientUserAsync(RegisterDTO userDTO)
         {
             try
             {
                 if (userDTO == null)
                     return BaseResponseDTO<ClientUserCreationDTO>.ErrorResult("User data cannot be null");
+
+                if (userDTO.ClientId.HasValue)
+                {
+                    var client = await _clientRepository.GetById(userDTO.ClientId.Value);
+                    if (client == null)
+                        return BaseResponseDTO<ClientUserCreationDTO>.ErrorResult("Client not found");
+
+                    if (client.VerificationStatus != VerificationStatus.Verified)
+                        return BaseResponseDTO<ClientUserCreationDTO>.ErrorResult(
+                            $"Cannot create user for client with status: {client.VerificationStatus}. Client must be {VerificationStatus.Verified}.");
+                }
 
                 var existingUser = await _userRepository.GetByEmailAsync(userDTO.Email) ?? await _userRepository.GetByUsernameAsync(userDTO.UserName);
                 if (existingUser != null)
