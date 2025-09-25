@@ -31,8 +31,6 @@ namespace API_BANKING_PAYMENT.Respositories
             return await _context.Beneficiaries
                 .FirstOrDefaultAsync(b => b.ClientId == clientId && b.AccountNumber == accountNumber);
         }
-
-
     }
 
 }
