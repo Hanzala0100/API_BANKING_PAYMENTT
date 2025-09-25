@@ -107,12 +107,13 @@ public class DocumentService : IDocumentService
                 UploadedAt = DateTime.UtcNow
             };
 
-            _repository.Add(document);
+            await _repository.Add(document);
 
             _logger.LogInformation("Document saved in DB. DocumentId: {DocumentId}, FileName: {FileName}",
                 document.DocumentId, document.FileName);
 
             var dto = _mapper.Map<DocumentDTO>(document);
+            dto.DocumentId = document.DocumentId;
             return BaseResponseDTO<DocumentDTO>.SuccessResult(dto, "Document uploaded successfully");
         }
         catch (Exception ex)
