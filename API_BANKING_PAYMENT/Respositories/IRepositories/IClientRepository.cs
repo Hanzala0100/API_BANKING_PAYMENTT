@@ -5,5 +5,7 @@ namespace API_BANKING_PAYMENT.Respositories.IRepositories
 {
     public interface IClientRepository : IRepository<Client>
     {
+
+        Task<IEnumerable<Client>> GetClientsByBankId(long bankId);
     }
 }

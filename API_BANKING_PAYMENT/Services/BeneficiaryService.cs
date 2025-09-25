@@ -75,7 +75,7 @@ namespace API_BANKING_PAYMENT.Services
                     return BaseResponseDTO<bool>.ErrorResult("Beneficiary not found.");
                 }
 
-                _repository.Delete(entity);
+                await _repository.Delete(entity);
 
                 _logger.LogInformation("Beneficiary with Id: {Id} deleted successfully", id);
 
@@ -108,7 +108,7 @@ namespace API_BANKING_PAYMENT.Services
         {
             try
             {
-                var entity = await _repository.GetBeneficiaryById(id);
+                var entity = await _repository.GetById(id);
                 if (entity == null)
                 {
                     _logger.LogWarning("Beneficiary with Id: {Id} not found", id);
@@ -130,7 +130,7 @@ namespace API_BANKING_PAYMENT.Services
         {
             try
             {
-                var entity = await _repository.GetBeneficiaryById(id);
+                var entity = await _repository.GetById(id);
                 if (entity == null)
                 {
                     _logger.LogWarning("Beneficiary with Id: {Id} not found", id);
@@ -139,7 +139,7 @@ namespace API_BANKING_PAYMENT.Services
 
                 _mapper.Map(model, entity);
 
-                _repository.Update(entity);
+                await _repository.Update(entity);
 
                 var dto = _mapper.Map<BeneficiaryDTO>(entity);
 
