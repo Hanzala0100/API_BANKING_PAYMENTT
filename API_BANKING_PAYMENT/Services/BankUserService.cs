@@ -6,63 +6,252 @@ using API_BANKING_PAYMENT.Models.Entities;
 
 namespace API_BANKING_PAYMENT.Services
 {
-    public class BankUserService: IBankUserService
+    public class BankUserService : IBankUserService
     {
-        private readonly IBankRepository _bankRepository;
+        private readonly IClientRepository _clientRepository;
+        private readonly IUserRepository _userRepository;
         private readonly IConfiguration _configuration;
         private readonly IMapper _mapper;
-        private readonly ILogger<SuperAdminService> _logger;
-        public BankUserService(IConfiguration configuration, IBankRepository bankRepository, IMapper mapper, ILogger<SuperAdminService> logger)
+        private readonly ILogger<BankUserService> _logger;
+
+        public BankUserService(IConfiguration configuration, IClientRepository clientRepository, IUserRepository userRepository, IMapper mapper, ILogger<BankUserService> logger)
         {
             _configuration = configuration;
-            _bankRepository = bankRepository;
+            _clientRepository = clientRepository;
+            _userRepository = userRepository;
             _mapper = mapper;
             _logger = logger;
         }
 
-        public Task<BaseResponseDTO<ClientDTO>> CreateClientAsync(BankCreationDTO bankCreationDTO)
+        public async Task<BaseResponseDTO<ClientDTO>> CreateClientAsync(ClientCreationDTO clientDTO)
         {
-            throw new NotImplementedException();
+            try
+            {
+                if (clientDTO == null)
+                    return BaseResponseDTO<ClientDTO>.ErrorResult("Client data cannot be null");
+
+                if (string.IsNullOrEmpty(clientDTO.RegisterationNumber))
+                    return BaseResponseDTO<ClientDTO>.ErrorResult("Registration number is required");
+
+                if (clientDTO.BankId <= 0)
+                    return BaseResponseDTO<ClientDTO>.ErrorResult("Valid Bank ID is required");
+
+                var existingClient = await _clientRepository.GetClientByRegisterationNumber(clientDTO.RegisterationNumber);
+                if (existingClient != null)
+                    return BaseResponseDTO<ClientDTO>.ErrorResult("Client with same registration number already exists");
+
+                var clientModel = new Client
+                {
+                    ClientName = clientDTO.ClientName,
+                    RegisterationNumber = clientDTO.RegisterationNumber,
+                    BankId = clientDTO.BankId,
+                    Address = clientDTO.Address ?? string.Empty,  
+                    VerificationStatus = "Completed",
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                var createdClient = await _clientRepository.AddClientAsync(clientModel);
+
+                var clientDto = new ClientDTO
+                {
+                    ClientId = createdClient.ClientId,
+                    ClientName = createdClient.ClientName,
+                    RegisterationNumber = createdClient.RegisterationNumber,
+                    VerificationStatus = createdClient.VerificationStatus,
+                    BankName = clientDTO.BankName,  
+                    Address = clientDTO.Address,
+                    TotalEmployees = 0,
+                    TotalBeneficiaries = 0,
+                    TotalPayments = 0
+                };
+
+                return BaseResponseDTO<ClientDTO>.SuccessResult(clientDto, "Client added successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while creating client with registration number: {RegNumber}", clientDTO?.RegisterationNumber ?? "Unknown");
+                return BaseResponseDTO<ClientDTO>.ErrorResult("Error occurred while creating client", new List<string> { ex.Message });
+            }
+        }
+        public async Task<BaseResponseDTO<ClientUserCreationDTO>> CreateClientUserAsync(RegisterDTO userDTO)
+        {
+            try
+            {
+                if (userDTO == null)
+                    return BaseResponseDTO<ClientUserCreationDTO>.ErrorResult("User data cannot be null");
+
+                var existingUser = await _userRepository.GetByEmailAsync(userDTO.Email) ?? await _userRepository.GetByUsernameAsync(userDTO.UserName);
+                if (existingUser != null)
+                    return BaseResponseDTO<ClientUserCreationDTO>.ErrorResult("User with same email or username already exists");
+
+                var userModel = _mapper.Map<User>(userDTO);
+                userModel.PasswordHash = BCrypt.Net.BCrypt.HashPassword(userDTO.Password);
+                userModel.Role = "ClientUser";
+                userModel.CreatedAt = DateTime.UtcNow;
+
+                var createdUser = await _userRepository.AddClientUser(userModel);
+
+                var clientUserDto = new ClientUserCreationDTO
+                {
+                    UserId = createdUser.UserId,
+                    UserName = createdUser.UserName,
+                    FullName = createdUser.FullName,
+                    Password = userDTO.Password,
+                    Email = createdUser.Email,
+                    Role = createdUser.Role,
+                    ClientId = (int?)createdUser.ClientId
+                };
+
+                return BaseResponseDTO<ClientUserCreationDTO>.SuccessResult(clientUserDto, "Client user created successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while creating client user with email: {Email}", userDTO?.Email ?? "Unknown");
+                return BaseResponseDTO<ClientUserCreationDTO>.ErrorResult("Error occurred while creating client user", new List<string> { ex.Message });
+            }
         }
 
-        public Task<BaseResponseDTO<User>> CreateClientUserAsync(RegisterDTO user)
+        public async Task<BaseResponseDTO<bool>> DeleteClientAsync(long clientId)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var existingClient = await _clientRepository.GetById(clientId);
+                if (existingClient == null)
+                    return BaseResponseDTO<bool>.ErrorResult("Client not found");
+
+                var result = await _clientRepository.Delete(existingClient);
+                if (result)
+                    return BaseResponseDTO<bool>.SuccessResult(true, "Client deleted successfully");
+                else
+                    return BaseResponseDTO<bool>.ErrorResult("Failed to delete client");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while deleting client with ID: {ClientId}", clientId);
+                return BaseResponseDTO<bool>.ErrorResult("Error occurred while deleting client", new List<string> { ex.Message });
+            }
         }
 
-        public Task<BaseResponseDTO<bool>> DeleteClientAsync(long cliendId)
+        public async Task<BaseResponseDTO<bool>> DeleteClientUserAsync(long clientUserId)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var existingUser = await _userRepository.GetById(clientUserId);
+                if (existingUser == null)
+                    return BaseResponseDTO<bool>.ErrorResult("Client user not found");
+
+                if (existingUser.Role != "ClientUser")
+                    return BaseResponseDTO<bool>.ErrorResult("User is not a client user");
+
+                var result = await _userRepository.Delete(existingUser);
+                if (result)
+                    return BaseResponseDTO<bool>.SuccessResult(true, "Client user deleted successfully");
+                else
+                    return BaseResponseDTO<bool>.ErrorResult("Failed to delete client user");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while deleting client user with ID: {UserId}", clientUserId);
+                return BaseResponseDTO<bool>.ErrorResult("Error occurred while deleting client user", new List<string> { ex.Message });
+            }
         }
 
-        public Task<BaseResponseDTO<bool>> DeleteClientUserAsync(long clientUserId)
+        public async Task<BaseResponseDTO<IEnumerable<ClientDTO>>> GetAllClientsAsync()
         {
-            throw new NotImplementedException();
+            try
+            {
+                var clients = await _clientRepository.GetAll();
+                var clientDTOs = _mapper.Map<IEnumerable<ClientDTO>>(clients);
+                return BaseResponseDTO<IEnumerable<ClientDTO>>.SuccessResult(clientDTOs, "Clients retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while retrieving all clients");
+                return BaseResponseDTO<IEnumerable<ClientDTO>>.ErrorResult("Error occurred while retrieving clients", new List<string> { ex.Message });
+            }
         }
 
-        public Task<BaseResponseDTO<IEnumerable<ClientDTO>>> GetAllClientsAsync()
+        public async Task<BaseResponseDTO<IEnumerable<UserDTO>>> GetAllClientUsersByClientIdAsync(long clientId)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var users = await _userRepository.GetUsersByClientId(clientId);
+                var clientUsers = users.Where(u => u.Role == "ClientUser");
+                var userDTOs = _mapper.Map<IEnumerable<UserDTO>>(clientUsers);
+                return BaseResponseDTO<IEnumerable<UserDTO>>.SuccessResult(userDTOs, "Client users retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while retrieving client users for client ID: {ClientId}", clientId);
+                return BaseResponseDTO<IEnumerable<UserDTO>>.ErrorResult("Error occurred while retrieving client users", new List<string> { ex.Message });
+            }
         }
 
-        public Task<BaseResponseDTO<IEnumerable<UserDTO>>> GetAllClientUsersByClientIdAsync(long clientId)
+        public async Task<BaseResponseDTO<ClientDTO>> GetClientByIdAsync(long clientId)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var client = await _clientRepository.GetById(clientId);
+                if (client == null)
+                    return BaseResponseDTO<ClientDTO>.ErrorResult("Client not found");
+
+                var clientDTO = _mapper.Map<ClientDTO>(client);
+                return BaseResponseDTO<ClientDTO>.SuccessResult(clientDTO, "Client retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while retrieving client with ID: {ClientId}", clientId);
+                return BaseResponseDTO<ClientDTO>.ErrorResult("Error occurred while retrieving client", new List<string> { ex.Message });
+            }
         }
 
-        public Task<BaseResponseDTO<ClientDTO>> GetClientByIdAsync(long clientId)
+        public async Task<BaseResponseDTO<UserDTO>> GetClienUserByIdAsync(long clientUserId)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var user = await _userRepository.GetById(clientUserId);
+                if (user == null)
+                    return BaseResponseDTO<UserDTO>.ErrorResult("Client user not found");
+
+                if (user.Role != "ClientUser")
+                    return BaseResponseDTO<UserDTO>.ErrorResult("User is not a client user");
+
+                var userDTO = _mapper.Map<UserDTO>(user);
+                return BaseResponseDTO<UserDTO>.SuccessResult(userDTO, "Client user retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while retrieving client user with ID: {UserId}", clientUserId);
+                return BaseResponseDTO<UserDTO>.ErrorResult("Error occurred while retrieving client user", new List<string> { ex.Message });
+            }
         }
 
-        public Task<BaseResponseDTO<UserDTO>> GetClienUserByIdAsync(long clientId)
+        public async Task<BaseResponseDTO<ClientDTO>> UpdateClientAsync(ClientDTO clientDTO)
         {
-            throw new NotImplementedException();
-        }
+            try
+            {
+                var existingClient = await _clientRepository.GetById(clientDTO.ClientId);
+                if (existingClient == null)
+                    return BaseResponseDTO<ClientDTO>.ErrorResult("Client not found");
 
-        public Task<BaseResponseDTO<ClientDTO>> UpdateClientAsync(ClientDTO clientDTO)
-        {
-            throw new NotImplementedException();
+                _mapper.Map(clientDTO, existingClient);
+                var result = await _clientRepository.Update(existingClient);
+
+                if (result)
+                {
+                    var updatedDTO = _mapper.Map<ClientDTO>(existingClient);
+                    return BaseResponseDTO<ClientDTO>.SuccessResult(updatedDTO, "Client updated successfully");
+                }
+                else
+                {
+                    return BaseResponseDTO<ClientDTO>.ErrorResult("Failed to update client");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while updating client with ID: {ClientId}", clientDTO.ClientId);
+                return BaseResponseDTO<ClientDTO>.ErrorResult("Error occurred while updating client", new List<string> { ex.Message });
+            }
         }
     }
 }

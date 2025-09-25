@@ -7,5 +7,8 @@ namespace API_BANKING_PAYMENT.Respositories.IRepositories
     {
 
         Task<IEnumerable<Client>> GetClientsByBankId(long bankId);
+        Task<Client> GetClientByRegisterationNumber(string RegisterationNumber);
+        Task<Client> AddClientAsync(Client client);
     }
+
 }

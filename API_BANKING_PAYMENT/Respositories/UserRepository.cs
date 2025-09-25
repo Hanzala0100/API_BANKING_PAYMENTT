@@ -27,16 +27,23 @@ namespace API_BANKING_PAYMENT.Respositories
                 .FirstOrDefaultAsync(u => u.UserName == username);
         }
 
-        public async Task AddClientAsync(Client client)
+        public async Task<User> AddClientUser(User clientUser)
         {
-            _context.Clients.Add(client);
+            _context.Users.Add(clientUser);
             await _context.SaveChangesAsync();
+            return clientUser;
         }
 
         public async Task<IEnumerable<User>> GetUsersByBankId(long bankId)
         {
             return await _context.Users
                 .Where(usr => usr.BankId == bankId)
+                .ToListAsync();
+        }
+        public async Task<IEnumerable<User>> GetUsersByClientId(long clientId)
+        {
+            return await _context.Users
+                .Where(usr => usr.ClientId == clientId)
                 .ToListAsync();
         }
 

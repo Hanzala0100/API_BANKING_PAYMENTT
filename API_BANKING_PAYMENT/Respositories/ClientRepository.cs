@@ -19,6 +19,16 @@ namespace API_BANKING_PAYMENT.Respositories
                .ToListAsync();
         }
 
-
+        public async Task<Client> AddClientAsync(Client client)
+        {
+            _context.Clients.Add(client);
+             await _context.SaveChangesAsync();
+            return client;
+        }
+        public async Task<Client> GetClientByRegisterationNumber(string RegisterationNumber)
+        {
+            return await _context.Clients
+                .FirstOrDefaultAsync(c => c.RegisterationNumber == RegisterationNumber);
+        }
     }
 }
