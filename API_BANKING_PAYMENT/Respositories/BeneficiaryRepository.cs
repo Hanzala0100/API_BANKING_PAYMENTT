@@ -28,14 +28,19 @@ namespace API_BANKING_PAYMENT.Respositories
                 })
                 .ToListAsync();
         }
-        
+      
+
         public async Task<Beneficiary> GetBeneficiaryById(long id)
         {
             return await _context.Beneficiaries
                 .FirstOrDefaultAsync(b => b.BeneficiaryId == id);
         }
 
-
+        public async Task<Beneficiary> GetBeneficiaryByAccountNumber(long clientId, long accountNumber)
+        {
+            return await _context.Beneficiaries
+                .FirstOrDefaultAsync(b => b.ClientId == clientId && b.AccountNumber == accountNumber);
+        }
 
 
     }

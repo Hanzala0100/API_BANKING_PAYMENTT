@@ -27,6 +27,26 @@ namespace API_BANKING_PAYMENT.Services
         {
             try
             {
+                if (model == null)
+                    return BaseResponseDTO<BeneficiaryDTO>.ErrorResult("Beneficiary data is required");
+
+                if (model.ClientId == 0)
+                    return BaseResponseDTO<BeneficiaryDTO>.ErrorResult("Client ID is required");
+
+                if (model.AccountNumber == 0)
+                    return BaseResponseDTO<BeneficiaryDTO>.ErrorResult("Account number is required");
+
+                if (string.IsNullOrEmpty(model.Ifsccode))
+                    return BaseResponseDTO<BeneficiaryDTO>.ErrorResult("IFSC code is required");
+
+                var existingBeneficiary = await _repository.GetBeneficiaryByAccountNumber(model.ClientId, model.AccountNumber);
+
+                if (existingBeneficiary != null)
+                {
+                    return BaseResponseDTO<BeneficiaryDTO>.ErrorResult(
+                        "Beneficiary with this account number already exists for this client");
+                }
+
                 var entity = _mapper.Map<Beneficiary>(model);
                 await _repository.Add(entity);
 

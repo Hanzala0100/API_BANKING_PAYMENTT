@@ -8,5 +8,6 @@ namespace API_BANKING_PAYMENT.Respositories.IRepositories
     {
         Task<Beneficiary> GetBeneficiaryById(long Id);
         Task<List<BeneficiaryDTO>> GetAllBeneficiariesByClientId(long Id);
+        Task<Beneficiary> GetBeneficiaryByAccountNumber(long clientId, long accountNumber);
     }
 }
