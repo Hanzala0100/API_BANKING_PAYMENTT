@@ -142,22 +142,27 @@ namespace API_BANKING_PAYMENT.Services
                     );
                 }
 
-                var bankDTOs = banks.Select(bank =>
+                var bankDTOs = new List<BankDTO>();
+
+                foreach (var bank in banks)
                 {
                     var dto = _mapper.Map<BankDTO>(bank);
 
-                    var adminUser = bank.Users?.FirstOrDefault(u => u.Role == "BankUser");
-                    if (adminUser != null)
+                    // Fetch the admin user for this bank
+                    var adminUser = await _userRepository.GetUsersByBankId(bank.BankId);
+                    var admin = adminUser.FirstOrDefault(); // Assuming the first user with BankId is admin
+
+                    if (admin != null)
                     {
-                        dto.AdminUsername = adminUser.UserName;
-                        dto.AdminId = adminUser.UserId;
+                        dto.AdminId = admin.UserId;
+                        dto.AdminUsername = admin.UserName;
                     }
 
                     dto.TotalClients = bank.Clients?.Count ?? 0;
                     dto.TotalUsers = bank.Users?.Count ?? 0;
 
-                    return dto;
-                });
+                    bankDTOs.Add(dto);
+                }
 
                 return BaseResponseDTO<IEnumerable<BankDTO>>.SuccessResult(
                     bankDTOs,
@@ -179,6 +184,7 @@ namespace API_BANKING_PAYMENT.Services
             try
             {
                 var bank = await _bankRepository.GetById(bankId);
+
                 if (bank == null)
                 {
                     _logger.LogWarning("Bank not found with ID: {BankId}", bankId);
@@ -187,11 +193,13 @@ namespace API_BANKING_PAYMENT.Services
 
                 var dto = _mapper.Map<BankDTO>(bank);
 
-                var adminUser = bank.Users?.FirstOrDefault(u => u.Role == "BankUser");
-                if (adminUser != null)
+                var adminUser = await _userRepository.GetUsersByBankId(bank.BankId);
+                var admin = adminUser.FirstOrDefault();  
+
+                if (admin != null)
                 {
-                    dto.AdminUsername = adminUser.UserName;
-                    dto.AdminId = adminUser.UserId;
+                    dto.AdminId = admin.UserId;
+                    dto.AdminUsername = admin.UserName;
                 }
 
                 dto.TotalClients = bank.Clients?.Count ?? 0;
@@ -209,6 +217,7 @@ namespace API_BANKING_PAYMENT.Services
                 );
             }
         }
+
 
 
         public Task<BaseResponseDTO<ReportDTO>> GenerateAuditLogReportAsync(ReportRequestDTO request)

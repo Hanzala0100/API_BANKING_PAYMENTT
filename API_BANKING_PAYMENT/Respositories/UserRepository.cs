@@ -40,5 +40,10 @@ namespace API_BANKING_PAYMENT.Respositories
                 .ToListAsync();
         }
 
+        public async Task<User> GetBankUserBankId(long bankId)
+        {
+             return await _context.Users
+                    .FirstOrDefaultAsync(u => u.BankId == bankId);
+        }
     }
 }
