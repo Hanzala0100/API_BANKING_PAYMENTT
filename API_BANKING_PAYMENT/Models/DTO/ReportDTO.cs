@@ -7,5 +7,6 @@
         public DateTime GeneratedAt { get; set; }
         public string? FileUrl { get; set; }
         public long GeneratedBy { get; set; }
+        public string? GeneratedByName { get; set; }
     }
 }

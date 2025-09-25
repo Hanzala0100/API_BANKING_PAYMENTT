@@ -7,6 +7,8 @@
         public string Address { get; set; }
         public string ContactEmail { get; set; }
         public string ContactPhone { get; set; }
+        public string AdminUsername { get; set; }
+        public long AdminId { get; set; }
         public int TotalClients { get; set; }
         public int TotalUsers { get; set; }
     }

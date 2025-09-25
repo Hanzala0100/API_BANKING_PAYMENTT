@@ -8,5 +8,6 @@ namespace API_BANKING_PAYMENT.Respositories.IRepositories
         Task<User> GetByEmailAsync(string email);
         Task<User> GetByUsernameAsync(string username);
         Task AddClientAsync(Client client);
+        Task<IEnumerable<User>> GetUsersByBankId(long bankId);
     }
 }
