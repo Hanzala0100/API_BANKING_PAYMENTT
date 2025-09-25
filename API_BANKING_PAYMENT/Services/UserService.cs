@@ -13,12 +13,12 @@ namespace API_BANKING_PAYMENT.Services
     public class UserService : IUserService
     {
         private readonly IUserRepository _repository;
-        private readonly IBankService _bankService;
+        private readonly IBankUserService _bankService;
         private readonly IMapper _mapper;
         private readonly ILogger<UserService> _logger;  
         private readonly IConfiguration _config;
 
-        public UserService(IUserRepository repository, IBankService bankService, IMapper mapper, ILogger<UserService> logger, IConfiguration config)
+        public UserService(IUserRepository repository, IBankUserService bankService, IMapper mapper, ILogger<UserService> logger, IConfiguration config)
         {
             _repository = repository;
             _bankService = bankService;

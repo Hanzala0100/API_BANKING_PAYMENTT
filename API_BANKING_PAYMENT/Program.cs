@@ -33,8 +33,8 @@ namespace API_BANKING_PAYMENT
             builder.Services.AddScoped<IUserRepository, UserRepository>();
             builder.Services.AddScoped<IUserService, UserService>();
 
-            //Bank 
-            builder.Services.AddScoped<IBankService, BankService>();
+            //BankUser
+            builder.Services.AddScoped<IBankUserService, BankUserService>();
             builder.Services.AddScoped<IBankRepository, BankRepository>();
 
             //Employee

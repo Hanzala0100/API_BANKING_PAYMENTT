@@ -12,6 +12,7 @@ namespace API_BANKING_PAYMENT.Mapping
             CreateMap<User, UserDTO>()
                 .ForMember(dest => dest.BankName,
                            opt => opt.MapFrom(src => src.Bank != null ? src.Bank.BankName : null));
+                
 
             CreateMap<RegisterDTO, User>()
                 .ForMember(dest => dest.PasswordHash, opt => opt.Ignore())

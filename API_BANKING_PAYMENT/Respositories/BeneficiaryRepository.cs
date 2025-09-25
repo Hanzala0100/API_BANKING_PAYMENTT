@@ -14,10 +14,10 @@ namespace API_BANKING_PAYMENT.Respositories
             _context = context;
         }
 
-        public async Task<IEnumerable<Beneficiary>> GetAllBeneficiariesByClientId(long clientId)
+        public async Task<IEnumerable<Beneficiary>> GetAllBeneficiariesByClientId(long Id)
         {
             return await _context.Beneficiaries
-                .Where(b => b.ClientId == clientId)
+                .Where(b => b.ClientId == Id)
                 .ToListAsync();
         }
 
@@ -31,7 +31,6 @@ namespace API_BANKING_PAYMENT.Respositories
             return await _context.Beneficiaries
                 .FirstOrDefaultAsync(b => b.ClientId == clientId && b.AccountNumber == accountNumber);
         }
-
 
     }
 
