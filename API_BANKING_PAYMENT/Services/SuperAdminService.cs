@@ -174,11 +174,41 @@ namespace API_BANKING_PAYMENT.Services
             }
         }
 
-        public Task<BaseResponseDTO<BankDTO>> GetBankByIdAsync(long bankId)
+        public async Task<BaseResponseDTO<BankDTO>> GetBankByIdAsync(long bankId)
         {
-            throw new NotImplementedException();
-        }
+            try
+            {
+                var bank = await _bankRepository.GetById(bankId);
+                if (bank == null)
+                {
+                    _logger.LogWarning("Bank not found with ID: {BankId}", bankId);
+                    return BaseResponseDTO<BankDTO>.ErrorResult("Bank not found");
+                }
 
+                var dto = _mapper.Map<BankDTO>(bank);
+
+                var adminUser = bank.Users?.FirstOrDefault(u => u.Role == "BankUser");
+                if (adminUser != null)
+                {
+                    dto.AdminUsername = adminUser.UserName;
+                    dto.AdminId = adminUser.UserId;
+                }
+
+                dto.TotalClients = bank.Clients?.Count ?? 0;
+                dto.TotalUsers = bank.Users?.Count ?? 0;
+
+                _logger.LogInformation("Bank fetched successfully: {BankId} - {BankName}", bankId, bank.BankName);
+                return BaseResponseDTO<BankDTO>.SuccessResult(dto, "Bank fetched successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching bank with ID: {BankId}", bankId);
+                return BaseResponseDTO<BankDTO>.ErrorResult(
+                    "Error fetching bank details",
+                    new List<string> { ex.Message }
+                );
+            }
+        }
 
 
         public Task<BaseResponseDTO<ReportDTO>> GenerateAuditLogReportAsync(ReportRequestDTO request)
