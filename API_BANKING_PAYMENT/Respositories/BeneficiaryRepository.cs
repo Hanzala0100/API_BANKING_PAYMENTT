@@ -27,29 +27,7 @@ namespace API_BANKING_PAYMENT.Respositories
                     Ifsccode = b.Ifsccode
                 })
                 .ToListAsync();
-        }
-        public async Task<List<BeneficiaryDTO>> GetAllBeneficiariesById(long Id)
-        {
-            return await _context.Beneficiaries
-                .Where(b => b.BeneficiaryId == Id)
-                .Select(b => new BeneficiaryDTO
-                {
-                    BeneficiaryId = b.BeneficiaryId,
-                    FullName = b.FullName,
-                    AccountNumber = b.AccountNumber,
-                    BankName = b.BankName,
-                    Ifsccode = b.Ifsccode
-                })
-                .ToListAsync();
-        }
-
-        public async Task<Beneficiary> GetByClientAndAccountAsync(long clientId, long accountNumber, string ifscCode)
-        {
-            return await _context.Beneficiaries
-                .FirstOrDefaultAsync(b => b.ClientId == clientId &&
-                                         b.AccountNumber == accountNumber &&
-                                         b.Ifsccode == ifscCode);
-        }
+      
 
         public async Task<Beneficiary> GetBeneficiaryById(long id)
         {
