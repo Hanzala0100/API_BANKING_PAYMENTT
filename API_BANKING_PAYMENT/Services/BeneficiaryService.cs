@@ -27,6 +27,27 @@ namespace API_BANKING_PAYMENT.Services
         {
             try
             {
+                if (model == null)
+                    return BaseResponseDTO<BeneficiaryDTO>.ErrorResult("Beneficiary data is required");
+
+                if (model.ClientId == 0)
+                    return BaseResponseDTO<BeneficiaryDTO>.ErrorResult("Client ID is required");
+
+                if (model.AccountNumber == 0)
+                    return BaseResponseDTO<BeneficiaryDTO>.ErrorResult("Account number is required");
+
+                if (string.IsNullOrEmpty(model.Ifsccode))
+                    return BaseResponseDTO<BeneficiaryDTO>.ErrorResult("IFSC code is required");
+
+                var existingBeneficiary = await _repository.GetByClientAndAccountAsync(
+                    model.ClientId, model.AccountNumber, model.Ifsccode);
+
+                if (existingBeneficiary != null)
+                {
+                    return BaseResponseDTO<BeneficiaryDTO>.ErrorResult(
+                        "Beneficiary with this account number and IFSC code already exists for this client");
+                }
+
                 var entity = _mapper.Map<Beneficiary>(model);
                 await _repository.Add(entity);
 
@@ -55,7 +76,7 @@ namespace API_BANKING_PAYMENT.Services
                     return BaseResponseDTO<bool>.ErrorResult("Beneficiary not found.");
                 }
 
-                _repository.Delete(entity);
+                await _repository.Delete(entity);
 
                 _logger.LogInformation("Beneficiary with Id: {Id} deleted successfully", id);
 
@@ -88,7 +109,7 @@ namespace API_BANKING_PAYMENT.Services
         {
             try
             {
-                var entity = await _repository.GetBeneficiaryById(id);
+                var entity = await _repository.GetById(id);
                 if (entity == null)
                 {
                     _logger.LogWarning("Beneficiary with Id: {Id} not found", id);
@@ -110,7 +131,7 @@ namespace API_BANKING_PAYMENT.Services
         {
             try
             {
-                var entity = await _repository.GetBeneficiaryById(id);
+                var entity = await _repository.GetById(id);
                 if (entity == null)
                 {
                     _logger.LogWarning("Beneficiary with Id: {Id} not found", id);
@@ -119,7 +140,7 @@ namespace API_BANKING_PAYMENT.Services
 
                 _mapper.Map(model, entity);
 
-                _repository.Update(entity);
+                await _repository.Update(entity);
 
                 var dto = _mapper.Map<BeneficiaryDTO>(entity);
 

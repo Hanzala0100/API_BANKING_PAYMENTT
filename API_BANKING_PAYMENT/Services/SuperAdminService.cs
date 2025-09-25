@@ -29,6 +29,39 @@ namespace API_BANKING_PAYMENT.Services
             _config = config;
         }
 
-      
+        public Task<BaseResponseDTO<BankDTO>> CreateBankAsync(BankCreationDTO bankCreationDTO)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<BaseResponseDTO<bool>> DeleteBankAsync(long bankId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<BaseResponseDTO<ReportDTO>> GenerateAuditLogReportAsync(ReportRequestDTO request)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<BaseResponseDTO<ReportDTO>> GenerateSystemUsageReportAsync(ReportRequestDTO request)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<BaseResponseDTO<IEnumerable<BankDTO>>> GetAllBanksAsync()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<BaseResponseDTO<BankDTO>> GetBankByIdAsync(long bankId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<BaseResponseDTO<BankDTO>> UpdateBankAsync(BankDTO bankDTO)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

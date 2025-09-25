@@ -38,12 +38,12 @@ namespace API_BANKING_PAYMENT.Controllers
 
 
         [HttpPost("logout")]
-        public async Task<IActionResult> Logout()
+        public async   Task<IActionResult> Logout()
         {
             var authHeader = Request.Headers["Authorization"].ToString();
 
             if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
-                return BadRequest(new { Message = "No User Logged In" });
+                return  BadRequest(new { Message = "No User Logged In" });
 
 
             return Ok(new BaseResponseDTO<Object> { Message = "Logged out successfully.", Success = true });

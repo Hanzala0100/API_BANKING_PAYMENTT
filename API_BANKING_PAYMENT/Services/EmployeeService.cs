@@ -23,10 +23,10 @@ namespace API_BANKING_PAYMENT.Services
         {
             try
             {
-                var existingEmployee = await _repository.GetByEmailAsync(model.Email);
+                var existingEmployee = await _repository.GetByEmailAsync(model.Email) ?? await _repository.GetByUsernameAsync(model.UserName);
                 if (existingEmployee != null)
                 {
-                    return BaseResponseDTO<EmployeeDTO>.ErrorResult("Employee with this email already exists.");
+                    return BaseResponseDTO<EmployeeDTO>.ErrorResult("Employee with this email or username already exists.");
                 }
 
                 var newEmployee = _mapper.Map<Employee>(model);
