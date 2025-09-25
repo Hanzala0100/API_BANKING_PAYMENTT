@@ -11,6 +11,8 @@ namespace API_BANKING_PAYMENT.Mapping
             CreateMap<Bank,BankDTO>()
                 .ForMember(dest => dest.TotalClients, opt => opt.MapFrom(src => src.Clients.Count))
                 .ForMember(dest => dest.TotalUsers, opt => opt.MapFrom(src => src.Users.Count));
+            CreateMap<BankDTO, Bank>();
+            CreateMap<BankCreationDTO, Bank>();
         }
     }
 }

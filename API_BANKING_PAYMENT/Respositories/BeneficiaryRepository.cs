@@ -27,8 +27,8 @@ namespace API_BANKING_PAYMENT.Respositories
                     Ifsccode = b.Ifsccode
                 })
                 .ToListAsync();
-        }
-        
+      
+
         public async Task<Beneficiary> GetBeneficiaryById(long id)
         {
             return await _context.Beneficiaries

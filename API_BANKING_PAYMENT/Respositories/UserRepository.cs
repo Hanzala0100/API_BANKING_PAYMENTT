@@ -33,5 +33,12 @@ namespace API_BANKING_PAYMENT.Respositories
             await _context.SaveChangesAsync();
         }
 
+        public async Task<IEnumerable<User>> GetUsersByBankId(long bankId)
+        {
+            return await _context.Users
+                .Where(usr => usr.BankId == bankId)
+                .ToListAsync();
+        }
+
     }
 }

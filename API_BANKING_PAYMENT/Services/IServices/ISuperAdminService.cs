@@ -1,24 +1,15 @@
 ﻿using API_BANKING_PAYMENT.Models.DTO;
-using API_BANKING_PAYMENT.Models.Entities;
 
-namespace API_BANKING_PAYMENT.Services.IServices
+public interface ISuperAdminService
 {
-    public interface ISuperAdminService
-    {
-        //Bank 
-        //Task<Bank> CreateBankAsync(BankDTO bankDTO);
-        //Task<BankDTO> UpdateBankAsync(BankDTO bankDTO);
-        //Task DeleteBankAsync(long bankId);
-        //Task<BankDTO> GetBankAsync(long bankId);
-        //Task<IEnumerable<BankDTO>> GetAllBanksAsync();
+    // Bank   
+    Task<BaseResponseDTO<BankDTO>> CreateBankAsync(BankCreationDTO bankCreationDTO);
+    Task<BaseResponseDTO<BankDTO>> UpdateBankAsync(BankDTO bankDTO);
+    Task<BaseResponseDTO<bool>> DeleteBankAsync(long bankId);
+    Task<BaseResponseDTO<BankDTO>> GetBankByIdAsync(long bankId);
+    Task<BaseResponseDTO<IEnumerable<BankDTO>>> GetAllBanksAsync();
 
-        ////Bank User
-        //Task<User> CreateBankUserAsync(UserDTO userDTO);
-        //Task<UserDTO> UpdateBankUserAsync(UserDTO bankDTO);
-        //Task<UserDTO> DeleteBankUserAsync(long bankId);
-        //Task<IEnumerable<UserDTO>> GetAllUsersAsync();
-        //Task<UserDTO> GetUserByIdAsync(long id);
-        //Task<UserDTO> GetUserByUserNameAsync(string userName);
-        //Task<IEnumerable<UserDTO>>GetAllUserByBankId(long bankId);
-    }
+    // Report Generation
+    Task<BaseResponseDTO<ReportDTO>> GenerateSystemUsageReportAsync(ReportRequestDTO request);
+    Task<BaseResponseDTO<ReportDTO>> GenerateAuditLogReportAsync(ReportRequestDTO request);
 }

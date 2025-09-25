@@ -7,7 +7,7 @@ public partial class Client
 {
     public long ClientId { get; set; }
 
-    public long BankId { get; set; }
+    public long? BankId { get; set; }
 
     public string ClientName { get; set; } = null!;
 
