@@ -139,21 +139,22 @@ namespace API_BANKING_PAYMENT.Services
             {
                 new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
                 new Claim(ClaimTypes.Name, user.UserName ?? string.Empty),
-                new Claim("FullName", user.FullName ?? string.Empty), 
+                new Claim("FullName", user.FullName ?? string.Empty),
                 new Claim(ClaimTypes.Email, user.Email ?? string.Empty),
                 new Claim(ClaimTypes.Role, user.Role ?? string.Empty)
             };
 
+            if (user.Role == "ClientUser" && user.ClientId.HasValue)
+            {
+                claims.Add(new Claim("ClientId", user.ClientId.Value.ToString()));
+            }
 
-            if (user.BankId.HasValue)
+            if (user.Role == "BankUser" && user.BankId.HasValue)
             {
                 claims.Add(new Claim("BankId", user.BankId.Value.ToString()));
             }
 
-            if (user.ClientId.HasValue)
-            {
-                claims.Add(new Claim("ClientId", user.ClientId.Value.ToString()));
-            }
+
 
             var expiry = DateTime.UtcNow.AddDays(10);
             var tokenOptions = new JwtSecurityToken(
