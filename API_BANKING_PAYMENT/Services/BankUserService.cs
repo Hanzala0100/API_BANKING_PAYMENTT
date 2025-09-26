@@ -1,7 +1,6 @@
 ﻿using API_BANKING_PAYMENT.Models.Enum;
 using API_BANKING_PAYMENT.Models.DTO;
 using API_BANKING_PAYMENT.Models.Entities;
-using API_BANKING_PAYMENT.Models.Enum;
 using API_BANKING_PAYMENT.Respositories.IRepositories;
 using API_BANKING_PAYMENT.Services.IServices;
 using AutoMapper;

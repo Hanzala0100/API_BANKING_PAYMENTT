@@ -248,7 +248,7 @@ namespace API_BANKING_PAYMENT.Controllers
         // BENEFICIARY MANAGEMENT ENDPOINTS
 
         [HttpPost("beneficiaries")]
-        public async Task<ActionResult<BaseResponseDTO<BeneficiaryDTO>>> CreateBeneficiary([FromBody] BeneficiaryDTO model)
+        public async Task<ActionResult<BaseResponseDTO<BeneficiaryDTO>>> CreateBeneficiary([FromBody] BeneficiaryRequestDTO model)
         {
             if (!ModelState.IsValid)
             {

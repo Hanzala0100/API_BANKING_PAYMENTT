@@ -25,8 +25,14 @@
     public class BatchSalaryDisbursementDTO
     {
         public long ClientId { get; set; }
-        public List<long> EmployeeIds { get; set; } = new List<long>();
+        public List<BatchEmployeeSalaryDTO> Employees { get; set; } = new List<BatchEmployeeSalaryDTO>();
         public DateTime DisbursementDate { get; set; } = DateTime.UtcNow;
+    }
+
+    public class BatchEmployeeSalaryDTO
+    {
+        public long EmployeeId { get; set; }
+        public decimal Amount { get; set; } // Custom amount for this disbursement
     }
 
     public class SalaryDisbursementResponseDTO

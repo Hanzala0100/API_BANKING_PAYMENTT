@@ -77,27 +77,34 @@ namespace API_BANKING_PAYMENT.Services
 
             try
             {
-                if (batchDTO == null || !batchDTO.EmployeeIds.Any())
+                if (batchDTO == null || !batchDTO.Employees.Any())
                     return BaseResponseDTO<BatchSalaryDisbursementResponseDTO>.ErrorResult("Batch data is required");
 
                 var client = await _clientRepository.GetById(batchDTO.ClientId);
                 if (client == null)
                     return BaseResponseDTO<BatchSalaryDisbursementResponseDTO>.ErrorResult("Invalid client");
 
-                foreach (var employeeId in batchDTO.EmployeeIds)
+                foreach (var employeeSalary in batchDTO.Employees)
                 {
                     try
                     {
-                        var employee = await _employeeRepository.GetById(employeeId);
+                        var employee = await _employeeRepository.GetById(employeeSalary.EmployeeId);
                         if (employee == null || employee.ClientId != batchDTO.ClientId)
                         {
-                            response.Errors.Add($"Invalid employee ID: {employeeId}");
+                            response.Errors.Add($"Invalid employee ID: {employeeSalary.EmployeeId}");
+                            response.Failed++;
+                            continue;
+                        }
+
+                        if (employeeSalary.Amount <= 0)
+                        {
+                            response.Errors.Add($"Invalid amount for employee: {employee.FullName}");
                             response.Failed++;
                             continue;
                         }
 
                         var hasPendingSalary = await _salaryDisbursementRepository.EmployeeHasPendingSalaryAsync(
-                            employeeId, batchDTO.DisbursementDate);
+                            employeeSalary.EmployeeId, batchDTO.DisbursementDate);
 
                         if (hasPendingSalary)
                         {
@@ -109,8 +116,8 @@ namespace API_BANKING_PAYMENT.Services
                         var salaryDisbursement = new SalaryDisbursement
                         {
                             ClientId = batchDTO.ClientId,
-                            EmployeeId = employeeId,
-                            Amount = employee.SalaryAmount,
+                            EmployeeId = employeeSalary.EmployeeId,
+                            Amount = employeeSalary.Amount,  
                             Status = "Pending",
                             DisbursementDate = batchDTO.DisbursementDate,
                             CreatedAt = DateTime.UtcNow
@@ -124,8 +131,8 @@ namespace API_BANKING_PAYMENT.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error processing salary for EmployeeId: {EmployeeId}", employeeId);
-                        response.Errors.Add($"Failed to process salary for employee ID: {employeeId}");
+                        _logger.LogError(ex, "Error processing salary for EmployeeId: {EmployeeId}", employeeSalary.EmployeeId);
+                        response.Errors.Add($"Failed to process salary for employee ID: {employeeSalary.EmployeeId}");
                         response.Failed++;
                     }
                 }
