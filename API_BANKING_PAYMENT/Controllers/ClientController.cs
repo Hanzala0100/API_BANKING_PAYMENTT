@@ -15,13 +15,24 @@ namespace API_BANKING_PAYMENT.Controllers
         private readonly IBankUserService _bankUserService;
         private readonly ILogger<ClientController> _logger;
         private readonly IBeneficiaryService _beneficiaryService;
+        private readonly ISalaryDisbursementService _salaryDisbursementService;
+        private readonly IPaymentService _paymentService;
 
-        public ClientController(IEmployeeService employeeService, IBankUserService bankUserService, ILogger<ClientController> logger, IBeneficiaryService beneficiaryService)
+        public ClientController(
+            IEmployeeService employeeService, 
+            IBankUserService bankUserService, 
+            ILogger<ClientController> logger, 
+            IBeneficiaryService beneficiaryService,
+            ISalaryDisbursementService salaryDisbursementService,
+            IPaymentService paymentService 
+            )
         {
             _employeeService = employeeService;
             _bankUserService = bankUserService;
             _logger = logger;
             _beneficiaryService = beneficiaryService;
+            _salaryDisbursementService = salaryDisbursementService;
+            _paymentService = paymentService;
         }
 
         // CLIENT USER MANAGEMENT 
@@ -374,6 +385,230 @@ namespace API_BANKING_PAYMENT.Controllers
             else
             {
                 _logger.LogWarning("Beneficiary deletion failed: {Message}", result.Message);
+                return BadRequest(result);
+            }
+        }
+
+
+
+        // PAYMENT MANAGEMENT ENDPOINTS  
+        [HttpPost("payments")]
+        public async Task<ActionResult<BaseResponseDTO<PaymentDTO>>> CreatePayment([FromBody] CreatePaymentDTO paymentDTO)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(BaseResponseDTO<PaymentDTO>.ErrorResult("Invalid input data"));
+            }
+
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            if (currentClientId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<PaymentDTO>.ErrorResult("Invalid client association"));
+            }
+
+            paymentDTO.ClientId = currentClientId;
+
+            var result = await _paymentService.CreatePaymentAsync(paymentDTO);
+
+            if (result.Success)
+            {
+                _logger.LogInformation("Payment created successfully for client ID: {ClientId}", currentClientId);
+                return Ok(result);
+            }
+            else
+            {
+                _logger.LogWarning("Payment creation failed: {Message}", result.Message);
+                return BadRequest(result);
+            }
+        }
+
+        [HttpGet("payments")]
+        public async Task<ActionResult<BaseResponseDTO<IEnumerable<PaymentDTO>>>> GetPayments()
+        {
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            if (currentClientId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<IEnumerable<PaymentDTO>>.ErrorResult("Invalid client association"));
+            }
+
+            var result = await _paymentService.GetPaymentsByClientIdAsync(currentClientId);
+
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            else
+            {
+                return StatusCode(500, result);
+            }
+        }
+
+        [HttpGet("payments/{paymentId}")]
+        public async Task<ActionResult<BaseResponseDTO<PaymentDTO>>> GetPaymentById(long paymentId)
+        {
+            if (paymentId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<PaymentDTO>.ErrorResult("Invalid payment ID"));
+            }
+
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            var paymentResult = await _paymentService.GetPaymentByIdAsync(paymentId);
+
+            if (paymentResult.Success && paymentResult.Data?.ClientId != currentClientId)
+            {
+                return Forbid();  
+            }
+
+            if (paymentResult.Success)
+            {
+                return Ok(paymentResult);
+            }
+            else
+            {
+                return NotFound(paymentResult);
+            }
+        }
+
+        [HttpDelete("payments/{paymentId}")]
+        public async Task<ActionResult<BaseResponseDTO<bool>>> DeletePayment(long paymentId)
+        {
+            if (paymentId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<bool>.ErrorResult("Invalid payment ID"));
+            }
+
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            var paymentResult = await _paymentService.GetPaymentByIdAsync(paymentId);
+
+            if (!paymentResult.Success || paymentResult.Data?.ClientId != currentClientId)
+            {
+                return Forbid(); 
+            }
+
+            var result = await _paymentService.DeletePaymentAsync(paymentId);
+
+            if (result.Success)
+            {
+                _logger.LogInformation("Payment deleted successfully: {PaymentId}", paymentId);
+                return Ok(result);
+            }
+            else
+            {
+                _logger.LogWarning("Payment deletion failed: {Message}", result.Message);
+                return BadRequest(result);
+            }
+        }
+
+        // SALARY DISBURSEMENT  
+        [HttpPost("salary-disbursements")]
+        public async Task<ActionResult<BaseResponseDTO<SalaryDisbursementDTO>>> CreateSalaryDisbursement([FromBody] CreateSalaryDisbursementDTO disbursementDTO)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(BaseResponseDTO<SalaryDisbursementDTO>.ErrorResult("Invalid input data"));
+            }
+
+            // Get current user's client ID from claims and set it
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            if (currentClientId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<SalaryDisbursementDTO>.ErrorResult("Invalid client association"));
+            }
+
+            disbursementDTO.ClientId = currentClientId;
+
+            var result = await _salaryDisbursementService.CreateSalaryDisbursementAsync(disbursementDTO);
+
+            if (result.Success)
+            {
+                _logger.LogInformation("Salary disbursement created successfully for client ID: {ClientId}", currentClientId);
+                return Ok(result);
+            }
+            else
+            {
+                _logger.LogWarning("Salary disbursement creation failed: {Message}", result.Message);
+                return BadRequest(result);
+            }
+        }
+
+        [HttpPost("salary-disbursements/batch")]
+        public async Task<ActionResult<BaseResponseDTO<BatchSalaryDisbursementResponseDTO>>> CreateBatchSalaryDisbursement([FromBody] BatchSalaryDisbursementDTO batchDTO)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(BaseResponseDTO<BatchSalaryDisbursementResponseDTO>.ErrorResult("Invalid input data"));
+            }
+
+            // Get current user's client ID from claims and set it
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            if (currentClientId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<BatchSalaryDisbursementResponseDTO>.ErrorResult("Invalid client association"));
+            }
+
+            batchDTO.ClientId = currentClientId;
+
+            var result = await _salaryDisbursementService.CreateBatchSalaryDisbursementAsync(batchDTO);
+
+            if (result.Success)
+            {
+                _logger.LogInformation("Batch salary disbursement created successfully for client ID: {ClientId}", currentClientId);
+                return Ok(result);
+            }
+            else
+            {
+                _logger.LogWarning("Batch salary disbursement creation failed: {Message}", result.Message);
+                return BadRequest(result);
+            }
+        }
+
+        [HttpGet("salary-disbursements")]
+        public async Task<ActionResult<BaseResponseDTO<IEnumerable<SalaryDisbursementDTO>>>> GetSalaryDisbursements()
+        {
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            if (currentClientId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<IEnumerable<SalaryDisbursementDTO>>.ErrorResult("Invalid client association"));
+            }
+
+            var result = await _salaryDisbursementService.GetSalaryDisbursementsByClientIdAsync(currentClientId);
+
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            else
+            {
+                return StatusCode(500, result);
+            }
+        }
+
+        [HttpPost("salary-disbursements/{salaryId}/process")]
+        public async Task<ActionResult<BaseResponseDTO<SalaryDisbursementDTO>>> ProcessSalaryDisbursement(long salaryId)
+        {
+            if (salaryId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<SalaryDisbursementDTO>.ErrorResult("Invalid salary ID"));
+            }
+
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            var salaryResult = await _salaryDisbursementService.GetSalaryDisbursementByIdAsync(salaryId);
+
+            if (!salaryResult.Success || salaryResult.Data?.ClientId != currentClientId)
+            {
+                return Forbid(); 
+            }
+
+            var result = await _salaryDisbursementService.ProcessSalaryDisbursementAsync(salaryId);
+
+            if (result.Success)
+            {
+                _logger.LogInformation("Salary disbursement processed successfully: {SalaryId}", salaryId);
+                return Ok(result);
+            }
+            else
+            {
+                _logger.LogWarning("Salary disbursement processing failed: {Message}", result.Message);
                 return BadRequest(result);
             }
         }

@@ -9,11 +9,21 @@ namespace API_BANKING_PAYMENT.Mapping
         public PaymentMappingProfile()
         {
             CreateMap<Payment, PaymentDTO>()
-        .ForMember(dest => dest.ClientName,
-            opt => opt.MapFrom(src => src.Client != null ? src.Client.ClientName : null))
-        .ForMember(dest => dest.BeneficiaryName,
-            opt => opt.MapFrom(src => src.Beneficiary != null ? src.Beneficiary.FullName : null));
-        }
+                .ForMember(dest => dest.BeneficiaryName,
+                    opt => opt.MapFrom(src => src.Beneficiary.FullName))
+                .ForMember(dest => dest.BeneficiaryAccountNumber,
+                    opt => opt.MapFrom(src => src.Beneficiary.AccountNumber))
+                .ForMember(dest => dest.ApprovedByName,
+                    opt => opt.MapFrom(src => src.ApprovedByNavigation.FullName))
+                .ForMember(dest => dest.ClientName,
+                    opt => opt.MapFrom(src => src.Client.ClientName));
 
+            CreateMap<CreatePaymentDTO, Payment>()
+                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => "Pending"))
+                .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => DateTime.UtcNow))
+                .ForMember(dest => dest.PaymentDate, opt => opt.MapFrom(src => src.PaymentDate));
+
+            CreateMap<PaymentDTO, Payment>();
+        }
     }
 }

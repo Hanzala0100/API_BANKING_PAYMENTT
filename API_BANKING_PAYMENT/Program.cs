@@ -49,6 +49,19 @@ namespace API_BANKING_PAYMENT
             builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
             builder.Services.AddScoped<IDocumentService, DocumentService>();
 
+            //SalaryDisbursement
+            builder.Services.AddScoped<ISalaryDisbursementRepository, SalaryDisbursementRepository>();
+            builder.Services.AddScoped<ISalaryDisbursementService, SalaryDisbursementService>();
+
+            //payments
+            builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
+            builder.Services.AddScoped<IPaymentService, PaymentService>();
+
+            //beneficiary
+            builder.Services.AddScoped<IBeneficiaryService, BeneficiaryService>();
+            builder.Services.AddScoped<IBeneficiaryRepository, BeneficiaryRepository>();
+
+
             //Settings for 3rd party Api and Service
             builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
             builder.Services.Configure<ReCaptchaSettings>(builder.Configuration.GetSection("ReCaptchaSettings"));
