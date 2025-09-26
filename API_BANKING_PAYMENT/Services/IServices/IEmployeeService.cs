@@ -9,5 +9,6 @@ namespace API_BANKING_PAYMENT.Services.IServices
         Task<BaseResponseDTO<IEnumerable<EmployeeDTO>>> GetAllAsync();
         Task<BaseResponseDTO<EmployeeDTO>> UpdateAsync(int id, EmployeeDTO model);
         Task<BaseResponseDTO<bool>> DeleteAsync(int id);
+        Task<BaseResponseDTO<BulkEmployeeImportResponseDTO>> BulkImportEmployeesAsync(long clientId, IFormFile csvFile);
     }
 }

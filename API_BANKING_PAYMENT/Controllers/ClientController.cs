@@ -618,9 +618,9 @@ namespace API_BANKING_PAYMENT.Controllers
         }
 
 
-        // Add these to your existing ClientController
+ 
 
-        // DOCUMENT MANAGEMENT ENDPOINTS (Client User)
+        // DOCUMENT MANAGEMENT  
         [HttpPost("documents")]
         public async Task<ActionResult<BaseResponseDTO<DocumentDTO>>> UploadDocument([FromForm] UploadDocumentRequestDTO request)
         {
@@ -791,6 +791,38 @@ namespace API_BANKING_PAYMENT.Controllers
             }
         }
 
-       
+        //Bulk Import via csv
+
+        [HttpPost("employees/bulk-import")]
+        public async Task<ActionResult<BaseResponseDTO<BulkEmployeeImportResponseDTO>>> BulkImportEmployees([FromForm] BulkEmployeeImportDTO request)
+        {
+            if (request.CsvFile == null || request.CsvFile.Length == 0)
+            {
+                return BadRequest(BaseResponseDTO<BulkEmployeeImportResponseDTO>.ErrorResult("CSV file is required"));
+            }
+
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            if (currentClientId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<BulkEmployeeImportResponseDTO>.ErrorResult("Invalid client association"));
+            }
+
+            var response = await _employeeService.BulkImportEmployeesAsync(currentClientId, request.CsvFile);
+
+            if (response.Success)
+            {
+                _logger.LogInformation("Bulk employee import successful for client ID: {ClientId}. Imported: {Imported}, Failed: {Failed}",
+                    currentClientId, response.Data.Successful, response.Data.Failed);
+                return Ok(response);
+            }
+            else
+            {
+                _logger.LogWarning("Bulk employee import failed for client ID: {ClientId}. Error: {Message}",
+                    currentClientId, response.Message);
+                return BadRequest(response);
+            }
+        }
+
+
     }
 }
