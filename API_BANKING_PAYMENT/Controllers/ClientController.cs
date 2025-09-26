@@ -1,4 +1,5 @@
 ﻿using API_BANKING_PAYMENT.Models.DTO;
+using API_BANKING_PAYMENT.Services;
 using API_BANKING_PAYMENT.Services.IServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -17,6 +18,7 @@ namespace API_BANKING_PAYMENT.Controllers
         private readonly IBeneficiaryService _beneficiaryService;
         private readonly ISalaryDisbursementService _salaryDisbursementService;
         private readonly IPaymentService _paymentService;
+        private readonly IClientService _clientService;
 
         public ClientController(
             IEmployeeService employeeService, 
@@ -24,7 +26,8 @@ namespace API_BANKING_PAYMENT.Controllers
             ILogger<ClientController> logger, 
             IBeneficiaryService beneficiaryService,
             ISalaryDisbursementService salaryDisbursementService,
-            IPaymentService paymentService 
+            IPaymentService paymentService,
+            IClientService clientService
             )
         {
             _employeeService = employeeService;
@@ -33,6 +36,7 @@ namespace API_BANKING_PAYMENT.Controllers
             _beneficiaryService = beneficiaryService;
             _salaryDisbursementService = salaryDisbursementService;
             _paymentService = paymentService;
+            _clientService = clientService;
         }
 
         // CLIENT USER MANAGEMENT 
@@ -612,5 +616,181 @@ namespace API_BANKING_PAYMENT.Controllers
                 return BadRequest(result);
             }
         }
+
+
+        // Add these to your existing ClientController
+
+        // DOCUMENT MANAGEMENT ENDPOINTS (Client User)
+        [HttpPost("documents")]
+        public async Task<ActionResult<BaseResponseDTO<DocumentDTO>>> UploadDocument([FromForm] UploadDocumentRequestDTO request)
+        {
+            if (request.File == null || request.File.Length == 0)
+            {
+                return BadRequest(BaseResponseDTO<DocumentDTO>.ErrorResult("File is required"));
+            }
+
+            if (string.IsNullOrEmpty(request.DocType))
+            {
+                return BadRequest(BaseResponseDTO<DocumentDTO>.ErrorResult("Document type is required"));
+            }
+
+            // Get current user's client ID and user ID from claims
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            var currentUserId = long.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
+
+            if (currentClientId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<DocumentDTO>.ErrorResult("Invalid client association"));
+            }
+
+            var result = await _clientService.UploadClientDocumentAsync(currentClientId, request.File, currentUserId, request.DocType);
+
+            if (result.Success)
+            {
+                _logger.LogInformation("Document uploaded successfully for client ID: {ClientId}", currentClientId);
+                return Ok(result);
+            }
+            else
+            {
+                _logger.LogWarning("Document upload failed: {Message}", result.Message);
+                return BadRequest(result);
+            }
+        }
+
+        [HttpGet("documents")]
+        public async Task<ActionResult<BaseResponseDTO<IEnumerable<DocumentDTO>>>> GetDocuments()
+        {
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            if (currentClientId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<IEnumerable<DocumentDTO>>.ErrorResult("Invalid client association"));
+            }
+
+            var result = await _clientService.GetClientDocumentsAsync(currentClientId);
+
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            else
+            {
+                return StatusCode(500, result);
+            }
+        }
+
+        [HttpGet("documents/{documentId}")]
+        public async Task<ActionResult<BaseResponseDTO<DocumentDTO>>> GetDocumentById(long documentId)
+        {
+            if (documentId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<DocumentDTO>.ErrorResult("Invalid document ID"));
+            }
+
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            if (currentClientId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<DocumentDTO>.ErrorResult("Invalid client association"));
+            }
+
+            var result = await _clientService.GetClientDocumentByIdAsync(currentClientId, documentId);
+
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            else
+            {
+                return NotFound(result);
+            }
+        }
+
+        [HttpGet("documents/type/{docType}")]
+        public async Task<ActionResult<BaseResponseDTO<IEnumerable<DocumentDTO>>>> GetDocumentsByType(string docType)
+        {
+            if (string.IsNullOrEmpty(docType))
+            {
+                return BadRequest(BaseResponseDTO<IEnumerable<DocumentDTO>>.ErrorResult("Document type is required"));
+            }
+
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            if (currentClientId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<IEnumerable<DocumentDTO>>.ErrorResult("Invalid client association"));
+            }
+
+            var result = await _clientService.GetClientDocumentsByTypeAsync(currentClientId, docType);
+
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            else
+            {
+                return StatusCode(500, result);
+            }
+        }
+
+        [HttpPut("documents/{documentId}")]
+        public async Task<ActionResult<BaseResponseDTO<DocumentDTO>>> UpdateDocument(long documentId, [FromForm] UpdateClientDocumentRequestDTO request)
+        {
+            if (documentId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<DocumentDTO>.ErrorResult("Invalid document ID"));
+            }
+
+            if (request.File == null || request.File.Length == 0)
+            {
+                return BadRequest(BaseResponseDTO<DocumentDTO>.ErrorResult("File is required"));
+            }
+
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            if (currentClientId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<DocumentDTO>.ErrorResult("Invalid client association"));
+            }
+
+            var result = await _clientService.UpdateClientDocumentAsync(currentClientId, documentId, request.File);
+
+            if (result.Success)
+            {
+                _logger.LogInformation("Document updated successfully: {DocumentId}", documentId);
+                return Ok(result);
+            }
+            else
+            {
+                _logger.LogWarning("Document update failed: {Message}", result.Message);
+                return BadRequest(result);
+            }
+        }
+
+        [HttpDelete("documents/{documentId}")]
+        public async Task<ActionResult<BaseResponseDTO<bool>>> DeleteDocument(long documentId)
+        {
+            if (documentId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<bool>.ErrorResult("Invalid document ID"));
+            }
+
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            if (currentClientId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<bool>.ErrorResult("Invalid client association"));
+            }
+
+            var result = await _clientService.DeleteClientDocumentAsync(currentClientId, documentId);
+
+            if (result.Success)
+            {
+                _logger.LogInformation("Document deleted successfully: {DocumentId}", documentId);
+                return Ok(result);
+            }
+            else
+            {
+                _logger.LogWarning("Document deletion failed: {Message}", result.Message);
+                return BadRequest(result);
+            }
+        }
+
+       
     }
 }

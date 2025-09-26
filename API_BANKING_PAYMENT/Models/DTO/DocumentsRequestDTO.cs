@@ -12,4 +12,11 @@
             public IFormFile File { get; set; }
             public string DocType { get; set; }
         }
+
+
+        public class UpdateClientDocumentRequestDTO
+        {
+            public IFormFile File { get; set; }
+        }
+
 }
