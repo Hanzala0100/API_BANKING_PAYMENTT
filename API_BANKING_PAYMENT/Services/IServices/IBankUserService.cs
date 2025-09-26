@@ -13,7 +13,7 @@ namespace API_BANKING_PAYMENT.Services.IServices
         Task<BaseResponseDTO<bool>> DeleteClientAsync(long clientId);
 
         // Client Verification  
-        Task<BaseResponseDTO<ClientDTO>> VerifyClientAsync(long clientId, long verifiedBy, string verificationStatus, string notes);
+        Task<BaseResponseDTO<ClientDTO>> VerifyClientAsync(long clientId, long verifiedBy, long bankId, string verificationStatus, string notes);
         Task<BaseResponseDTO<IEnumerable<ClientDTO>>> GetClientsByVerificationStatusAsync(string verificationStatus);
         Task<BaseResponseDTO<IEnumerable<ClientDTO>>> GetClientsWithPendingVerificationAsync();
 

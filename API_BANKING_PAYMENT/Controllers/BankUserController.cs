@@ -152,10 +152,10 @@ namespace API_BANKING_PAYMENT.Controllers
                 return BadRequest(BaseResponseDTO<ClientDTO>.ErrorResult("Invalid client ID"));
             }
 
-            // Get current user ID from claims
             var currentUserId = long.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
+            var currentUserBankId = long.Parse(User.FindFirst("BankId")?.Value ?? "0");
 
-            var result = await _bankUserService.VerifyClientAsync(clientId, currentUserId, request.VerificationStatus, request.Notes);
+            var result = await _bankUserService.VerifyClientAsync(clientId, currentUserId, currentUserBankId, request.VerificationStatus, request.Notes);
 
             if (result.Success)
             {
