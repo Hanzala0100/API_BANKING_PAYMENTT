@@ -14,12 +14,14 @@ namespace API_BANKING_PAYMENT.Controllers
         private readonly IEmployeeService _employeeService;
         private readonly IBankUserService _bankUserService;
         private readonly ILogger<ClientController> _logger;
+        private readonly IBeneficiaryService _beneficiaryService;
 
-        public ClientController(IEmployeeService employeeService, IBankUserService bankUserService, ILogger<ClientController> logger)
+        public ClientController(IEmployeeService employeeService, IBankUserService bankUserService, ILogger<ClientController> logger, IBeneficiaryService beneficiaryService)
         {
             _employeeService = employeeService;
             _bankUserService = bankUserService;
             _logger = logger;
+            _beneficiaryService = beneficiaryService;
         }
 
         // CLIENT USER MANAGEMENT 
@@ -230,6 +232,150 @@ namespace API_BANKING_PAYMENT.Controllers
             };
 
             return Ok(clientEmployees);
+        }
+
+        // BENEFICIARY MANAGEMENT ENDPOINTS
+
+        [HttpPost("beneficiaries")]
+        public async Task<ActionResult<BaseResponseDTO<BeneficiaryDTO>>> CreateBeneficiary([FromBody] BeneficiaryDTO model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(BaseResponseDTO<BeneficiaryDTO>.ErrorResult("Invalid input data"));
+            }
+
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            if (currentClientId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<BeneficiaryDTO>.ErrorResult("Invalid client association"));
+            }
+
+            model.ClientId = currentClientId;
+
+            var result = await _beneficiaryService.CreateAsync(model);
+
+            if (result.Success)
+            {
+                _logger.LogInformation("Beneficiary created successfully for client ID: {ClientId}", currentClientId);
+                return Ok(result);
+            }
+            else
+            {
+                _logger.LogWarning("Beneficiary creation failed: {Message}", result.Message);
+                return BadRequest(result);
+            }
+        }
+
+        [HttpGet("beneficiaries")]
+        public async Task<ActionResult<BaseResponseDTO<List<BeneficiaryDTO>>>> GetBeneficiaries()
+        {
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            if (currentClientId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<List<BeneficiaryDTO>>.ErrorResult("Invalid client association"));
+            }
+
+            var result = await _beneficiaryService.GetByClientIdAsync(currentClientId);
+
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            else
+            {
+                return StatusCode(500, result);
+            }
+        }
+
+        [HttpGet("beneficiaries/{id}")]
+        public async Task<ActionResult<BaseResponseDTO<BeneficiaryDTO>>> GetBeneficiaryById(long id)
+        {
+            if (id <= 0)
+            {
+                return BadRequest(BaseResponseDTO<BeneficiaryDTO>.ErrorResult("Invalid beneficiary ID"));
+            }
+
+            var result = await _beneficiaryService.GetByIdAsync(id);
+
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            if (result.Success && result.Data?.ClientId != currentClientId)
+            {
+                return Forbid();  
+            }
+
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            else
+            {
+                return NotFound(result);
+            }
+        }
+
+        [HttpPut("beneficiaries/{id}")]
+        public async Task<ActionResult<BaseResponseDTO<BeneficiaryDTO>>> UpdateBeneficiary(long id, [FromBody] BeneficiaryDTO model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(BaseResponseDTO<BeneficiaryDTO>.ErrorResult("Invalid input data"));
+            }
+
+            if (id != model.BeneficiaryId)
+            {
+                return BadRequest(BaseResponseDTO<BeneficiaryDTO>.ErrorResult("Beneficiary ID mismatch"));
+            }
+
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            var existingBeneficiary = await _beneficiaryService.GetByIdAsync(id);
+            if (!existingBeneficiary.Success || existingBeneficiary.Data?.ClientId != currentClientId)
+            {
+                return Forbid();
+            }
+
+            model.ClientId = currentClientId;
+
+            var result = await _beneficiaryService.UpdateAsync(id, model);
+
+            if (result.Success)
+            {
+                _logger.LogInformation("Beneficiary updated successfully: {BeneficiaryId}", id);
+                return Ok(result);
+            }
+            else
+            {
+                _logger.LogWarning("Beneficiary update failed: {Message}", result.Message);
+                return BadRequest(result);
+            }
+        }
+
+        [HttpDelete("beneficiaries/{id}")]
+        public async Task<ActionResult<BaseResponseDTO<bool>>> DeleteBeneficiary(long id)
+        {
+            if (id <= 0)
+            {
+                return BadRequest(BaseResponseDTO<bool>.ErrorResult("Invalid beneficiary ID"));
+            }
+
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            var existingBeneficiary = await _beneficiaryService.GetByIdAsync(id);
+            if (!existingBeneficiary.Success || existingBeneficiary.Data?.ClientId != currentClientId)
+            {
+                return Forbid();
+            }
+
+            var result = await _beneficiaryService.DeleteAsync(id);
+
+            if (result.Success)
+            {
+                _logger.LogInformation("Beneficiary deleted successfully: {BeneficiaryId}", id);
+                return Ok(result);
+            }
+            else
+            {
+                _logger.LogWarning("Beneficiary deletion failed: {Message}", result.Message);
+                return BadRequest(result);
+            }
         }
     }
 }
