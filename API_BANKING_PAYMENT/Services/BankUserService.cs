@@ -97,9 +97,9 @@ namespace API_BANKING_PAYMENT.Services
                 if (file == null || file.Length == 0)
                     return BaseResponseDTO<DocumentDTO>.ErrorResult("File is required");
 
-                var validDocTypes = new[] { "BusinessLicense", "KYCDocument", "TaxCertificate", "BankStatement", "AddressProof", "IdentityProof" };
-                if (!validDocTypes.Contains(docType))
-                    return BaseResponseDTO<DocumentDTO>.ErrorResult("Invalid document type");
+                //var validDocTypes = new[] { "BusinessLicense", "KYCDocument", "TaxCertificate", "BankStatement", "AddressProof", "IdentityProof" };
+                //if (!validDocTypes.Contains(docType))
+                //    return BaseResponseDTO<DocumentDTO>.ErrorResult("Invalid document type");
 
                 var result = await _documentService.UploadDocumentAsync(file, uploadedBy, bankId, clientId, docType);
 
