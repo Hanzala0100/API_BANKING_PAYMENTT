@@ -1,5 +1,6 @@
-﻿using API_BANKING_PAYMENT.Models.Enum;
-using API_BANKING_PAYMENT.Models.DTO;
+﻿using API_BANKING_PAYMENT.Models.DTO;
+using API_BANKING_PAYMENT.Models.Enum;
+using API_BANKING_PAYMENT.Services;
 using API_BANKING_PAYMENT.Services.IServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -14,11 +15,18 @@ namespace API_BANKING_PAYMENT.Controllers
     {
         private readonly IBankUserService _bankUserService;
         private readonly ILogger<BankUserController> _logger;
+        private readonly IPaymentService _paymentService;
 
-        public BankUserController(IBankUserService bankUserService, ILogger<BankUserController> logger)
+
+        public BankUserController(
+            IBankUserService bankUserService, 
+            ILogger<BankUserController> logger,
+            IPaymentService paymentService
+            )
         {
             _bankUserService = bankUserService;
             _logger = logger;
+            _paymentService = paymentService;
         }
 
         // CLIENT ENDPOINTS
@@ -144,10 +152,10 @@ namespace API_BANKING_PAYMENT.Controllers
                 return BadRequest(BaseResponseDTO<ClientDTO>.ErrorResult("Invalid client ID"));
             }
 
-            // Get current user ID from claims
             var currentUserId = long.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
+            var currentUserBankId = long.Parse(User.FindFirst("BankId")?.Value ?? "0");
 
-            var result = await _bankUserService.VerifyClientAsync(clientId, currentUserId, request.VerificationStatus, request.Notes);
+            var result = await _bankUserService.VerifyClientAsync(clientId, currentUserId, currentUserBankId, request.VerificationStatus, request.Notes);
 
             if (result.Success)
             {
@@ -340,5 +348,114 @@ namespace API_BANKING_PAYMENT.Controllers
                 return BadRequest(result);
             }
         }
+
+
+
+        // PAYMENT APPROVAL 
+        [HttpGet("payments/pending")]
+        public async Task<ActionResult<BaseResponseDTO<IEnumerable<PaymentDTO>>>> GetPendingPayments()
+        {
+            var result = await _paymentService.GetPendingPaymentsAsync();
+
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            else
+            {
+                return StatusCode(500, result);
+            }
+        }
+
+        [HttpGet("payments")]
+        public async Task<ActionResult<BaseResponseDTO<IEnumerable<PaymentDTO>>>> GetPaymentsByStatus([FromQuery] string status)
+        {
+            if (string.IsNullOrEmpty(status))
+            {
+                return BadRequest(BaseResponseDTO<IEnumerable<PaymentDTO>>.ErrorResult("Status parameter is required"));
+            }
+
+            var result = await _paymentService.GetPaymentsByStatusAsync(status);
+
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            else
+            {
+                return BadRequest(result);
+            }
+        }
+
+        [HttpPut("payments/{paymentId}/approve")]
+        public async Task<ActionResult<BaseResponseDTO<PaymentDTO>>> ApprovePayment(long paymentId, [FromBody] ApprovePaymentRequestDTO request)
+        {
+            if (paymentId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<PaymentDTO>.ErrorResult("Invalid payment ID"));
+            }
+
+            var currentBankUserId = long.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
+
+            var result = await _paymentService.ApprovePaymentAsync(paymentId, currentBankUserId, request.Notes);
+
+            if (result.Success)
+            {
+                _logger.LogInformation("Payment approved successfully: {PaymentId}, ApprovedBy: {BankUserId}", paymentId, currentBankUserId);
+                return Ok(result);
+            }
+            else
+            {
+                _logger.LogWarning("Payment approval failed: {Message}", result.Message);
+                return BadRequest(result);
+            }
+        }
+
+        [HttpPut("payments/{paymentId}/reject")]
+        public async Task<ActionResult<BaseResponseDTO<PaymentDTO>>> RejectPayment(long paymentId, [FromBody] ApprovePaymentRequestDTO request)
+        {
+            if (paymentId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<PaymentDTO>.ErrorResult("Invalid payment ID"));
+            }
+
+            var currentBankUserId = long.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
+
+            var result = await _paymentService.RejectPaymentAsync(paymentId, currentBankUserId, request.Notes);
+
+            if (result.Success)
+            {
+                _logger.LogInformation("Payment rejected: {PaymentId}, RejectedBy: {BankUserId}", paymentId, currentBankUserId);
+                return Ok(result);
+            }
+            else
+            {
+                _logger.LogWarning("Payment rejection failed: {Message}", result.Message);
+                return BadRequest(result);
+            }
+        }
+
+        [HttpGet("payments/{paymentId}")]
+        public async Task<ActionResult<BaseResponseDTO<PaymentDTO>>> GetPaymentById(long paymentId)
+        {
+            if (paymentId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<PaymentDTO>.ErrorResult("Invalid payment ID"));
+            }
+
+            var result = await _paymentService.GetPaymentByIdAsync(paymentId);
+
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            else
+            {
+                return NotFound(result);
+            }
+        }
+
+         
+       
     }
 }

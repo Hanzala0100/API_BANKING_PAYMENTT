@@ -12,4 +12,6 @@
         public string FileUrl { get; set; } = null!;   
         public DateTime UploadedAt { get; set; }      
     }
+
+
 }

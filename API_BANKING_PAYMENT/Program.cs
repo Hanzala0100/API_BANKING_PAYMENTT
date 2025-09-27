@@ -43,7 +43,7 @@ namespace API_BANKING_PAYMENT
 
             //Client
             builder.Services.AddScoped<IClientRepository, ClientRepository>();
-            //builder.Services.AddScoped<IClientService, ClientService>();
+            builder.Services.AddScoped<IClientService, ClientService>();
 
             //Document
             builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();

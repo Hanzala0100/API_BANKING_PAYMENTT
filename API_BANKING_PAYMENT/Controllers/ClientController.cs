@@ -1,4 +1,5 @@
 ﻿using API_BANKING_PAYMENT.Models.DTO;
+using API_BANKING_PAYMENT.Services;
 using API_BANKING_PAYMENT.Services.IServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -14,12 +15,28 @@ namespace API_BANKING_PAYMENT.Controllers
         private readonly IEmployeeService _employeeService;
         private readonly IBankUserService _bankUserService;
         private readonly ILogger<ClientController> _logger;
+        private readonly IBeneficiaryService _beneficiaryService;
+        private readonly ISalaryDisbursementService _salaryDisbursementService;
+        private readonly IPaymentService _paymentService;
+        private readonly IClientService _clientService;
 
-        public ClientController(IEmployeeService employeeService, IBankUserService bankUserService, ILogger<ClientController> logger)
+        public ClientController(
+            IEmployeeService employeeService, 
+            IBankUserService bankUserService, 
+            ILogger<ClientController> logger, 
+            IBeneficiaryService beneficiaryService,
+            ISalaryDisbursementService salaryDisbursementService,
+            IPaymentService paymentService,
+            IClientService clientService
+            )
         {
             _employeeService = employeeService;
             _bankUserService = bankUserService;
             _logger = logger;
+            _beneficiaryService = beneficiaryService;
+            _salaryDisbursementService = salaryDisbursementService;
+            _paymentService = paymentService;
+            _clientService = clientService;
         }
 
         // CLIENT USER MANAGEMENT 
@@ -231,5 +248,581 @@ namespace API_BANKING_PAYMENT.Controllers
 
             return Ok(clientEmployees);
         }
+
+        // BENEFICIARY MANAGEMENT ENDPOINTS
+
+        [HttpPost("beneficiaries")]
+        public async Task<ActionResult<BaseResponseDTO<BeneficiaryDTO>>> CreateBeneficiary([FromBody] BeneficiaryRequestDTO model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(BaseResponseDTO<BeneficiaryDTO>.ErrorResult("Invalid input data"));
+            }
+
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            if (currentClientId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<BeneficiaryDTO>.ErrorResult("Invalid client association"));
+            }
+
+            model.ClientId = currentClientId;
+
+            var result = await _beneficiaryService.CreateAsync(model);
+
+            if (result.Success)
+            {
+                _logger.LogInformation("Beneficiary created successfully for client ID: {ClientId}", currentClientId);
+                return Ok(result);
+            }
+            else
+            {
+                _logger.LogWarning("Beneficiary creation failed: {Message}", result.Message);
+                return BadRequest(result);
+            }
+        }
+
+        [HttpGet("beneficiaries")]
+        public async Task<ActionResult<BaseResponseDTO<List<BeneficiaryDTO>>>> GetBeneficiaries()
+        {
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            if (currentClientId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<List<BeneficiaryDTO>>.ErrorResult("Invalid client association"));
+            }
+
+            var result = await _beneficiaryService.GetByClientIdAsync(currentClientId);
+
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            else
+            {
+                return StatusCode(500, result);
+            }
+        }
+
+        [HttpGet("beneficiaries/{id}")]
+        public async Task<ActionResult<BaseResponseDTO<BeneficiaryDTO>>> GetBeneficiaryById(long id)
+        {
+            if (id <= 0)
+            {
+                return BadRequest(BaseResponseDTO<BeneficiaryDTO>.ErrorResult("Invalid beneficiary ID"));
+            }
+
+            var result = await _beneficiaryService.GetByIdAsync(id);
+
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            if (result.Success && result.Data?.ClientId != currentClientId)
+            {
+                return Forbid();  
+            }
+
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            else
+            {
+                return NotFound(result);
+            }
+        }
+
+        [HttpPut("beneficiaries/{id}")]
+        public async Task<ActionResult<BaseResponseDTO<BeneficiaryDTO>>> UpdateBeneficiary(long id, [FromBody] BeneficiaryDTO model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(BaseResponseDTO<BeneficiaryDTO>.ErrorResult("Invalid input data"));
+            }
+
+            if (id != model.BeneficiaryId)
+            {
+                return BadRequest(BaseResponseDTO<BeneficiaryDTO>.ErrorResult("Beneficiary ID mismatch"));
+            }
+
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            var existingBeneficiary = await _beneficiaryService.GetByIdAsync(id);
+            if (!existingBeneficiary.Success || existingBeneficiary.Data?.ClientId != currentClientId)
+            {
+                return Forbid();
+            }
+
+            model.ClientId = currentClientId;
+
+            var result = await _beneficiaryService.UpdateAsync(id, model);
+
+            if (result.Success)
+            {
+                _logger.LogInformation("Beneficiary updated successfully: {BeneficiaryId}", id);
+                return Ok(result);
+            }
+            else
+            {
+                _logger.LogWarning("Beneficiary update failed: {Message}", result.Message);
+                return BadRequest(result);
+            }
+        }
+
+        [HttpDelete("beneficiaries/{id}")]
+        public async Task<ActionResult<BaseResponseDTO<bool>>> DeleteBeneficiary(long id)
+        {
+            if (id <= 0)
+            {
+                return BadRequest(BaseResponseDTO<bool>.ErrorResult("Invalid beneficiary ID"));
+            }
+
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            var existingBeneficiary = await _beneficiaryService.GetByIdAsync(id);
+            if (!existingBeneficiary.Success || existingBeneficiary.Data?.ClientId != currentClientId)
+            {
+                return Forbid();
+            }
+
+            var result = await _beneficiaryService.DeleteAsync(id);
+
+            if (result.Success)
+            {
+                _logger.LogInformation("Beneficiary deleted successfully: {BeneficiaryId}", id);
+                return Ok(result);
+            }
+            else
+            {
+                _logger.LogWarning("Beneficiary deletion failed: {Message}", result.Message);
+                return BadRequest(result);
+            }
+        }
+
+
+
+        // PAYMENT MANAGEMENT ENDPOINTS  
+        [HttpPost("payments")]
+        public async Task<ActionResult<BaseResponseDTO<PaymentDTO>>> CreatePayment([FromBody] CreatePaymentDTO paymentDTO)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(BaseResponseDTO<PaymentDTO>.ErrorResult("Invalid input data"));
+            }
+
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            if (currentClientId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<PaymentDTO>.ErrorResult("Invalid client association"));
+            }
+
+            paymentDTO.ClientId = currentClientId;
+
+            var result = await _paymentService.CreatePaymentAsync(paymentDTO);
+
+            if (result.Success)
+            {
+                _logger.LogInformation("Payment created successfully for client ID: {ClientId}", currentClientId);
+                return Ok(result);
+            }
+            else
+            {
+                _logger.LogWarning("Payment creation failed: {Message}", result.Message);
+                return BadRequest(result);
+            }
+        }
+
+        [HttpGet("payments")]
+        public async Task<ActionResult<BaseResponseDTO<IEnumerable<PaymentDTO>>>> GetPayments()
+        {
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            if (currentClientId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<IEnumerable<PaymentDTO>>.ErrorResult("Invalid client association"));
+            }
+
+            var result = await _paymentService.GetPaymentsByClientIdAsync(currentClientId);
+
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            else
+            {
+                return StatusCode(500, result);
+            }
+        }
+
+        [HttpGet("payments/{paymentId}")]
+        public async Task<ActionResult<BaseResponseDTO<PaymentDTO>>> GetPaymentById(long paymentId)
+        {
+            if (paymentId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<PaymentDTO>.ErrorResult("Invalid payment ID"));
+            }
+
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            var paymentResult = await _paymentService.GetPaymentByIdAsync(paymentId);
+
+            if (paymentResult.Success && paymentResult.Data?.ClientId != currentClientId)
+            {
+                return Forbid();  
+            }
+
+            if (paymentResult.Success)
+            {
+                return Ok(paymentResult);
+            }
+            else
+            {
+                return NotFound(paymentResult);
+            }
+        }
+
+        [HttpDelete("payments/{paymentId}")]
+        public async Task<ActionResult<BaseResponseDTO<bool>>> DeletePayment(long paymentId)
+        {
+            if (paymentId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<bool>.ErrorResult("Invalid payment ID"));
+            }
+
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            var paymentResult = await _paymentService.GetPaymentByIdAsync(paymentId);
+
+            if (!paymentResult.Success || paymentResult.Data?.ClientId != currentClientId)
+            {
+                return Forbid(); 
+            }
+
+            var result = await _paymentService.DeletePaymentAsync(paymentId);
+
+            if (result.Success)
+            {
+                _logger.LogInformation("Payment deleted successfully: {PaymentId}", paymentId);
+                return Ok(result);
+            }
+            else
+            {
+                _logger.LogWarning("Payment deletion failed: {Message}", result.Message);
+                return BadRequest(result);
+            }
+        }
+
+        // SALARY DISBURSEMENT  
+        [HttpPost("salary-disbursements")]
+        public async Task<ActionResult<BaseResponseDTO<SalaryDisbursementDTO>>> CreateSalaryDisbursement([FromBody] CreateSalaryDisbursementDTO disbursementDTO)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(BaseResponseDTO<SalaryDisbursementDTO>.ErrorResult("Invalid input data"));
+            }
+
+            // Get current user's client ID from claims and set it
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            if (currentClientId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<SalaryDisbursementDTO>.ErrorResult("Invalid client association"));
+            }
+
+            disbursementDTO.ClientId = currentClientId;
+
+            var result = await _salaryDisbursementService.CreateSalaryDisbursementAsync(disbursementDTO);
+
+            if (result.Success)
+            {
+                _logger.LogInformation("Salary disbursement created successfully for client ID: {ClientId}", currentClientId);
+                return Ok(result);
+            }
+            else
+            {
+                _logger.LogWarning("Salary disbursement creation failed: {Message}", result.Message);
+                return BadRequest(result);
+            }
+        }
+
+        [HttpPost("salary-disbursements/batch")]
+        public async Task<ActionResult<BaseResponseDTO<BatchSalaryDisbursementResponseDTO>>> CreateBatchSalaryDisbursement([FromBody] BatchSalaryDisbursementDTO batchDTO)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(BaseResponseDTO<BatchSalaryDisbursementResponseDTO>.ErrorResult("Invalid input data"));
+            }
+
+            // Get current user's client ID from claims and set it
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            if (currentClientId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<BatchSalaryDisbursementResponseDTO>.ErrorResult("Invalid client association"));
+            }
+
+            batchDTO.ClientId = currentClientId;
+
+            var result = await _salaryDisbursementService.CreateBatchSalaryDisbursementAsync(batchDTO);
+
+            if (result.Success)
+            {
+                _logger.LogInformation("Batch salary disbursement created successfully for client ID: {ClientId}", currentClientId);
+                return Ok(result);
+            }
+            else
+            {
+                _logger.LogWarning("Batch salary disbursement creation failed: {Message}", result.Message);
+                return BadRequest(result);
+            }
+        }
+
+        [HttpGet("salary-disbursements")]
+        public async Task<ActionResult<BaseResponseDTO<IEnumerable<SalaryDisbursementDTO>>>> GetSalaryDisbursements()
+        {
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            if (currentClientId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<IEnumerable<SalaryDisbursementDTO>>.ErrorResult("Invalid client association"));
+            }
+
+            var result = await _salaryDisbursementService.GetSalaryDisbursementsByClientIdAsync(currentClientId);
+
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            else
+            {
+                return StatusCode(500, result);
+            }
+        }
+
+        [HttpPost("salary-disbursements/{salaryId}/process")]
+        public async Task<ActionResult<BaseResponseDTO<SalaryDisbursementDTO>>> ProcessSalaryDisbursement(long salaryId)
+        {
+            if (salaryId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<SalaryDisbursementDTO>.ErrorResult("Invalid salary ID"));
+            }
+
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            var salaryResult = await _salaryDisbursementService.GetSalaryDisbursementByIdAsync(salaryId);
+
+            if (!salaryResult.Success || salaryResult.Data?.ClientId != currentClientId)
+            {
+                return Forbid(); 
+            }
+
+            var result = await _salaryDisbursementService.ProcessSalaryDisbursementAsync(salaryId);
+
+            if (result.Success)
+            {
+                _logger.LogInformation("Salary disbursement processed successfully: {SalaryId}", salaryId);
+                return Ok(result);
+            }
+            else
+            {
+                _logger.LogWarning("Salary disbursement processing failed: {Message}", result.Message);
+                return BadRequest(result);
+            }
+        }
+
+
+ 
+
+        // DOCUMENT MANAGEMENT  
+        [HttpPost("documents")]
+        public async Task<ActionResult<BaseResponseDTO<DocumentDTO>>> UploadDocument([FromForm] UploadDocumentRequestDTO request)
+        {
+            if (request.File == null || request.File.Length == 0)
+            {
+                return BadRequest(BaseResponseDTO<DocumentDTO>.ErrorResult("File is required"));
+            }
+
+            if (string.IsNullOrEmpty(request.DocType))
+            {
+                return BadRequest(BaseResponseDTO<DocumentDTO>.ErrorResult("Document type is required"));
+            }
+
+            // Get current user's client ID and user ID from claims
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            var currentUserId = long.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
+
+            if (currentClientId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<DocumentDTO>.ErrorResult("Invalid client association"));
+            }
+
+            var result = await _clientService.UploadClientDocumentAsync(currentClientId, request.File, currentUserId, request.DocType);
+
+            if (result.Success)
+            {
+                _logger.LogInformation("Document uploaded successfully for client ID: {ClientId}", currentClientId);
+                return Ok(result);
+            }
+            else
+            {
+                _logger.LogWarning("Document upload failed: {Message}", result.Message);
+                return BadRequest(result);
+            }
+        }
+
+        [HttpGet("documents")]
+        public async Task<ActionResult<BaseResponseDTO<IEnumerable<DocumentDTO>>>> GetDocuments()
+        {
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            if (currentClientId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<IEnumerable<DocumentDTO>>.ErrorResult("Invalid client association"));
+            }
+
+            var result = await _clientService.GetClientDocumentsAsync(currentClientId);
+
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            else
+            {
+                return StatusCode(500, result);
+            }
+        }
+
+        [HttpGet("documents/{documentId}")]
+        public async Task<ActionResult<BaseResponseDTO<DocumentDTO>>> GetDocumentById(long documentId)
+        {
+            if (documentId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<DocumentDTO>.ErrorResult("Invalid document ID"));
+            }
+
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            if (currentClientId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<DocumentDTO>.ErrorResult("Invalid client association"));
+            }
+
+            var result = await _clientService.GetClientDocumentByIdAsync(currentClientId, documentId);
+
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            else
+            {
+                return NotFound(result);
+            }
+        }
+
+        [HttpGet("documents/type/{docType}")]
+        public async Task<ActionResult<BaseResponseDTO<IEnumerable<DocumentDTO>>>> GetDocumentsByType(string docType)
+        {
+            if (string.IsNullOrEmpty(docType))
+            {
+                return BadRequest(BaseResponseDTO<IEnumerable<DocumentDTO>>.ErrorResult("Document type is required"));
+            }
+
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            if (currentClientId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<IEnumerable<DocumentDTO>>.ErrorResult("Invalid client association"));
+            }
+
+            var result = await _clientService.GetClientDocumentsByTypeAsync(currentClientId, docType);
+
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            else
+            {
+                return StatusCode(500, result);
+            }
+        }
+
+        [HttpPut("documents/{documentId}")]
+        public async Task<ActionResult<BaseResponseDTO<DocumentDTO>>> UpdateDocument(long documentId, [FromForm] UpdateClientDocumentRequestDTO request)
+        {
+            if (documentId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<DocumentDTO>.ErrorResult("Invalid document ID"));
+            }
+
+            if (request.File == null || request.File.Length == 0)
+            {
+                return BadRequest(BaseResponseDTO<DocumentDTO>.ErrorResult("File is required"));
+            }
+
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            if (currentClientId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<DocumentDTO>.ErrorResult("Invalid client association"));
+            }
+
+            var result = await _clientService.UpdateClientDocumentAsync(currentClientId, documentId, request.File);
+
+            if (result.Success)
+            {
+                _logger.LogInformation("Document updated successfully: {DocumentId}", documentId);
+                return Ok(result);
+            }
+            else
+            {
+                _logger.LogWarning("Document update failed: {Message}", result.Message);
+                return BadRequest(result);
+            }
+        }
+
+        [HttpDelete("documents/{documentId}")]
+        public async Task<ActionResult<BaseResponseDTO<bool>>> DeleteDocument(long documentId)
+        {
+            if (documentId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<bool>.ErrorResult("Invalid document ID"));
+            }
+
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            if (currentClientId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<bool>.ErrorResult("Invalid client association"));
+            }
+
+            var result = await _clientService.DeleteClientDocumentAsync(currentClientId, documentId);
+
+            if (result.Success)
+            {
+                _logger.LogInformation("Document deleted successfully: {DocumentId}", documentId);
+                return Ok(result);
+            }
+            else
+            {
+                _logger.LogWarning("Document deletion failed: {Message}", result.Message);
+                return BadRequest(result);
+            }
+        }
+
+        //Bulk Import via csv
+
+        [HttpPost("employees/bulk-import")]
+        public async Task<ActionResult<BaseResponseDTO<BulkEmployeeImportResponseDTO>>> BulkImportEmployees([FromForm] BulkEmployeeImportDTO request)
+        {
+            if (request.CsvFile == null || request.CsvFile.Length == 0)
+            {
+                return BadRequest(BaseResponseDTO<BulkEmployeeImportResponseDTO>.ErrorResult("CSV file is required"));
+            }
+
+            var currentClientId = long.Parse(User.FindFirst("ClientId")?.Value ?? "0");
+            if (currentClientId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<BulkEmployeeImportResponseDTO>.ErrorResult("Invalid client association"));
+            }
+
+            var response = await _employeeService.BulkImportEmployeesAsync(currentClientId, request.CsvFile);
+
+            if (response.Success)
+            {
+                _logger.LogInformation("Bulk employee import successful for client ID: {ClientId}. Imported: {Imported}, Failed: {Failed}",
+                    currentClientId, response.Data.Successful, response.Data.Failed);
+                return Ok(response);
+            }
+            else
+            {
+                _logger.LogWarning("Bulk employee import failed for client ID: {ClientId}. Error: {Message}",
+                    currentClientId, response.Message);
+                return BadRequest(response);
+            }
+        }
+
+
     }
 }

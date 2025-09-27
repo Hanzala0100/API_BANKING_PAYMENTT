@@ -23,7 +23,7 @@ namespace API_BANKING_PAYMENT.Services
             _logger = logger;
         }
 
-        public async Task<BaseResponseDTO<BeneficiaryDTO>> CreateAsync(BeneficiaryDTO model)
+        public async Task<BaseResponseDTO<BeneficiaryDTO>> CreateAsync(BeneficiaryRequestDTO model)
         {
             try
             {

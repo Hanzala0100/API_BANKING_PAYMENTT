@@ -3,7 +3,6 @@ using API_BANKING_PAYMENT.Models.Entities;
 
 namespace API_BANKING_PAYMENT.Respositories.IRepositories
 {
-     
         public interface IRepository<T> where T : class
         {
          Task<T> GetById(long id);

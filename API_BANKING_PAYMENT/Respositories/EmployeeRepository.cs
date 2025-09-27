@@ -25,7 +25,18 @@ namespace API_BANKING_PAYMENT.Respositories
             return await _context.Users
                 .FirstOrDefaultAsync(u => u.UserName == username);
         }
+        public async Task<bool> EmployeeExistsAsync(long clientId, string email, long accountNumber)
+        {
+            return await _context.Employees
+                .AnyAsync(e => e.ClientId == clientId &&
+                              (e.Email == email || e.AccountNumber == accountNumber));
+        }
 
+        public async Task<bool> AddRangeAsync(IEnumerable<Employee> employees)
+        {
+            await _context.Employees.AddRangeAsync(employees);
+            return await _context.SaveChangesAsync() > 0;
+        }
     }
 
 }

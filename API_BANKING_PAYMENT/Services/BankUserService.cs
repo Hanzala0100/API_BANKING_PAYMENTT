@@ -1,7 +1,6 @@
 ﻿using API_BANKING_PAYMENT.Models.Enum;
 using API_BANKING_PAYMENT.Models.DTO;
 using API_BANKING_PAYMENT.Models.Entities;
-using API_BANKING_PAYMENT.Models.Enum;
 using API_BANKING_PAYMENT.Respositories.IRepositories;
 using API_BANKING_PAYMENT.Services.IServices;
 using AutoMapper;
@@ -117,7 +116,7 @@ namespace API_BANKING_PAYMENT.Services
             }
         }
 
-        public async Task<BaseResponseDTO<ClientDTO>> VerifyClientAsync(long clientId, long verifiedBy, string verificationStatus, string notes)
+        public async Task<BaseResponseDTO<ClientDTO>> VerifyClientAsync(long clientId, long verifiedBy, long bankId, string verificationStatus, string notes)
         {
             try
             {
@@ -125,11 +124,16 @@ namespace API_BANKING_PAYMENT.Services
                 if (client == null)
                     return BaseResponseDTO<ClientDTO>.ErrorResult("Client not found");
 
+                if (client.BankId != bankId)
+                    return BaseResponseDTO<ClientDTO>.ErrorResult("You can only verify clients from your own bank");
+
                 if (!VerificationStatus.GetAllStatuses().Contains(verificationStatus))
                     return BaseResponseDTO<ClientDTO>.ErrorResult("Invalid verification status");
 
-                if (!VerificationStatus.IsValidTransition(client.VerificationStatus, verificationStatus))
-                    return BaseResponseDTO<ClientDTO>.ErrorResult($"Invalid status transition from {client.VerificationStatus} to {verificationStatus}");
+                var oldStatus = client.VerificationStatus;
+
+                if (!VerificationStatus.IsValidTransition(oldStatus, verificationStatus))
+                    return BaseResponseDTO<ClientDTO>.ErrorResult($"Invalid status transition from {oldStatus} to {verificationStatus}");
 
                 client.VerificationStatus = verificationStatus;
                 client.VerifiedBy = verifiedBy;
@@ -142,7 +146,7 @@ namespace API_BANKING_PAYMENT.Services
                 {
                     var clientDTO = _mapper.Map<ClientDTO>(client);
                     _logger.LogInformation("Client verification status updated: Client ID: {ClientId}, From: {OldStatus}, To: {NewStatus}",
-                        clientId, client.VerificationStatus, verificationStatus);
+                        clientId, oldStatus, verificationStatus);
 
                     return BaseResponseDTO<ClientDTO>.SuccessResult(clientDTO, $"Client verification status updated to {verificationStatus}");
                 }

@@ -7,5 +7,7 @@ namespace API_BANKING_PAYMENT.Respositories.IRepositories
     {
         Task<User> GetByEmailAsync(string email);
         Task<User> GetByUsernameAsync(string username);
+        Task<bool> EmployeeExistsAsync(long clientId, string email, long accountNumber);
+        Task<bool> AddRangeAsync(IEnumerable<Employee> employees);
     }
 }
