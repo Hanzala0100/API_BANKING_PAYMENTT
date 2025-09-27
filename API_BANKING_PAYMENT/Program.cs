@@ -49,12 +49,32 @@ namespace API_BANKING_PAYMENT
             builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
             builder.Services.AddScoped<IDocumentService, DocumentService>();
 
+            //SalaryDisbursement
+            builder.Services.AddScoped<ISalaryDisbursementRepository, SalaryDisbursementRepository>();
+            builder.Services.AddScoped<ISalaryDisbursementService, SalaryDisbursementService>();
+
+            //payments
+            builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
+            builder.Services.AddScoped<IPaymentService, PaymentService>();
+
+            //User Context
+            builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+            builder.Services.AddScoped<IUserContext, UserContext>();
+
+            //Reports
+            builder.Services.AddScoped<IReportRepository, ReportRepository>();
+            builder.Services.AddScoped<IReportService, ReportService>();
+
+            //beneficiary
+            builder.Services.AddScoped<IBeneficiaryService, BeneficiaryService>();
+            builder.Services.AddScoped<IBeneficiaryRepository, BeneficiaryRepository>();
+
+
             //Settings for 3rd party Api and Service
             builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
             builder.Services.Configure<ReCaptchaSettings>(builder.Configuration.GetSection("ReCaptchaSettings"));
             builder.Services.AddHttpClient(); 
             builder.Services.AddScoped<ReCaptchaService>();
-
 
             //Admin
             builder.Services.AddScoped<ISuperAdminService, SuperAdminService>();
