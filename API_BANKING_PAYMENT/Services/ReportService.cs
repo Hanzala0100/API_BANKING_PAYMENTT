@@ -4,7 +4,7 @@ using API_BANKING_PAYMENT.Models.Enum;
 using API_BANKING_PAYMENT.Respositories.IRepositories;
 using API_BANKING_PAYMENT.Services.IServices;
 using AutoMapper;
-using CloudinaryDotNet.Core;
+using iTextSharp.text;
 using iTextSharp.text.pdf;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +20,16 @@ namespace API_BANKING_PAYMENT.Services
         private readonly BankDbContext _context;
         private readonly IMapper _mapper;
         private readonly ILogger<ReportService> _logger;
+
+        // PDF styling constants
+        private readonly BaseColor HEADER_BG_COLOR = new BaseColor(41, 128, 185);
+        private readonly BaseColor ACCENT_COLOR = new BaseColor(52, 152, 219);
+        private readonly BaseColor LIGHT_GRAY = new BaseColor(240, 240, 240);
+        private readonly Font TITLE_FONT = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 18, BaseColor.WHITE);
+        private readonly Font HEADER_FONT = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 12, BaseColor.WHITE);
+        private readonly Font SUBHEADER_FONT = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 14, BaseColor.DARK_GRAY);
+        private readonly Font NORMAL_FONT = FontFactory.GetFont(FontFactory.HELVETICA, 10);
+        private readonly Font BOLD_FONT = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 10);
 
         public ReportService(
             IReportRepository reportRepository,
@@ -93,27 +103,20 @@ namespace API_BANKING_PAYMENT.Services
                     GeneratedBy = user.UserId,
                     GeneratedAt = DateTime.UtcNow,
                     ReportType = GetReportTypeByRole(user.Role),
-                    FileUrl = uploadResult.Data?.FileUrl
+                    FileUrl = uploadResult.Data?.FileUrl,
                 };
 
-                // Since AddAsync returns bool, we need to save and then retrieve the report
                 var success = await _reportRepository.Add(report);
-
                 if (!success)
-                {
                     return BaseResponseDTO<ReportDTO>.ErrorResult("Failed to save report to database");
-                }
 
-                // Now we need to retrieve the report to get the generated ID
-                // You'll need a method to get the latest report by user ID
-                var createdReport = await _reportRepository.GetById(report.ReportId);
+                // Retrieve the created report
+                var userReports = await _reportRepository.GetReportsByUserIdAsync(user.UserId);
+                var createdReport = userReports.OrderByDescending(r => r.GeneratedAt).FirstOrDefault();
 
                 if (createdReport == null)
-                {
                     return BaseResponseDTO<ReportDTO>.ErrorResult("Failed to retrieve created report");
-                }
 
-                // Manual mapping
                 var reportDTO = new ReportDTO
                 {
                     ReportId = createdReport.ReportId,
@@ -146,7 +149,6 @@ namespace API_BANKING_PAYMENT.Services
                 if (user == null)
                     return BaseResponseDTO<ReportDTO>.ErrorResult("User not authenticated");
 
-                // Authorization check
                 bool isAuthorized = user.Role switch
                 {
                     Roles.SuperAdmin => true,
@@ -157,11 +159,10 @@ namespace API_BANKING_PAYMENT.Services
                 if (!isAuthorized)
                     return BaseResponseDTO<ReportDTO>.ErrorResult("You are not authorized to access this report");
 
-                // Simple mapping - no more enum conversion needed!
                 var reportDTO = new ReportDTO
                 {
                     ReportId = report.ReportId,
-                    ReportType = report.ReportType, // Direct assignment - both are strings now
+                    ReportType = report.ReportType,
                     GeneratedAt = report.GeneratedAt,
                     FileUrl = report.FileUrl ?? string.Empty,
                     GeneratedBy = report.GeneratedBy,
@@ -185,23 +186,23 @@ namespace API_BANKING_PAYMENT.Services
                 if (user == null)
                     return BaseResponseDTO<IEnumerable<ReportDTO>>.ErrorResult("User not authenticated");
 
-                IEnumerable<Report> reports;
-
-                switch (user.Role)
+                IEnumerable<Report> reports = user.Role switch
                 {
-                    case Roles.ClientUser:
-                    case Roles.BankUser:
-                        reports = await _reportRepository.GetReportsByUserIdAsync(user.UserId);
-                        break;
-                    case Roles.SuperAdmin:
-                        reports = await _reportRepository.GetAll();
-                        break;
-                    default:
-                        reports = Enumerable.Empty<Report>();
-                        break;
-                }
+                    Roles.ClientUser or Roles.BankUser => await _reportRepository.GetReportsByUserIdAsync(user.UserId),
+                    Roles.SuperAdmin => await _reportRepository.GetAll(),
+                    _ => Enumerable.Empty<Report>()
+                };
 
-                var reportDTOs = _mapper.Map<IEnumerable<ReportDTO>>(reports);
+                var reportDTOs = reports.Select(r => new ReportDTO
+                {
+                    ReportId = r.ReportId,
+                    ReportType = r.ReportType,
+                    GeneratedAt = r.GeneratedAt,
+                    FileUrl = r.FileUrl ?? string.Empty,
+                    GeneratedBy = r.GeneratedBy,
+                    GeneratedByName = r.GeneratedByNavigation?.FullName ?? "Unknown"
+                });
+
                 return BaseResponseDTO<IEnumerable<ReportDTO>>.SuccessResult(reportDTOs, "Reports retrieved successfully");
             }
             catch (Exception ex)
@@ -223,16 +224,13 @@ namespace API_BANKING_PAYMENT.Services
                 if (user == null)
                     return BaseResponseDTO<bool>.ErrorResult("User not authenticated");
 
-                // Authorization: Only allow users to delete their own reports, or SuperAdmin
                 if (user.Role != Roles.SuperAdmin && report.GeneratedBy != user.UserId)
                     return BaseResponseDTO<bool>.ErrorResult("You are not authorized to delete this report");
 
-                var reportdel = await _reportRepository.GetById(reportId);
-                var result = await _reportRepository.Delete(reportdel);
-                if (result)
-                    return BaseResponseDTO<bool>.SuccessResult(true, "Report deleted successfully");
-                else
-                    return BaseResponseDTO<bool>.ErrorResult("Failed to delete report");
+                var result = await _reportRepository.Delete(report);
+                return result
+                    ? BaseResponseDTO<bool>.SuccessResult(true, "Report deleted successfully")
+                    : BaseResponseDTO<bool>.ErrorResult("Failed to delete report");
             }
             catch (Exception ex)
             {
@@ -241,7 +239,7 @@ namespace API_BANKING_PAYMENT.Services
             }
         }
 
-        // ================== PDF Generation Methods (Keep these as-is) ==================
+        // ================== ENHANCED PDF GENERATION METHODS ==================
 
         public async Task<byte[]> GenerateClientReportAsync(long clientId)
         {
@@ -258,73 +256,40 @@ namespace API_BANKING_PAYMENT.Services
                 if (client == null) throw new Exception("Client not found");
 
                 using var stream = new MemoryStream();
-                var pdf = new iTextSharp.text.Document();
-                PdfWriter.GetInstance(pdf, stream);
-                pdf.Open();
+                var pdfDocument = new iTextSharp.text.Document(PageSize.A4, 40, 40, 60, 40); // Explicit namespace
+                var writer = PdfWriter.GetInstance(pdfDocument, stream);
 
-                pdf.Add(new iTextSharp.text.Paragraph($"Client Report - {client.ClientName}"));
-                pdf.Add(new iTextSharp.text.Paragraph($"Registration No: {client.RegisterationNumber}"));
-                pdf.Add(new iTextSharp.text.Paragraph($"Bank: {client.Bank.BankName}"));
-                pdf.Add(new iTextSharp.text.Paragraph($"Created At: {client.CreatedAt}"));
-                pdf.Add(new iTextSharp.text.Paragraph(" "));
+                // Add header/footer
+                writer.PageEvent = new PdfPageEventHelperz();
 
-                // Employees Table
-                pdf.Add(new iTextSharp.text.Paragraph("Employees"));
-                var empTable = new PdfPTable(4);
-                empTable.AddCell("ID"); empTable.AddCell("FullName"); empTable.AddCell("Email"); empTable.AddCell("Salary");
-                foreach (var e in client.Employees)
-                {
-                    empTable.AddCell(e.EmployeeId.ToString());
-                    empTable.AddCell(e.FullName);
-                    empTable.AddCell(e.Email);
-                    empTable.AddCell(e.SalaryAmount.ToString("C"));
-                }
-                pdf.Add(empTable);
-                pdf.Add(new iTextSharp.text.Paragraph(" "));
+                pdfDocument.Open();
 
-                // Beneficiaries Table
-                pdf.Add(new iTextSharp.text.Paragraph("Beneficiaries"));
-                var benTable = new PdfPTable(4);
-                benTable.AddCell("ID"); benTable.AddCell("FullName"); benTable.AddCell("AccountNumber"); benTable.AddCell("BankName");
-                foreach (var b in client.Beneficiaries)
-                {
-                    benTable.AddCell(b.BeneficiaryId.ToString());
-                    benTable.AddCell(b.FullName);
-                    benTable.AddCell(b.AccountNumber.ToString());
-                    benTable.AddCell(b.BankName);
-                }
-                pdf.Add(benTable);
-                pdf.Add(new iTextSharp.text.Paragraph(" "));
+                // Title Section
+                AddTitleSection(pdfDocument, $"CLIENT REPORT - {client.ClientName.ToUpper()}");
 
-                // Payments Table
-                pdf.Add(new iTextSharp.text.Paragraph("Payments"));
-                var payTable = new PdfPTable(4);
-                payTable.AddCell("ID"); payTable.AddCell("Amount"); payTable.AddCell("Status"); payTable.AddCell("Date");
-                foreach (var p in client.Payments)
-                {
-                    payTable.AddCell(p.PaymentId.ToString());
-                    payTable.AddCell(p.Amount.ToString("C"));
-                    payTable.AddCell(p.Status);
-                    payTable.AddCell(p.PaymentDate.ToShortDateString());
-                }
-                pdf.Add(payTable);
-                pdf.Add(new iTextSharp.text.Paragraph(" "));
+                // Client Information Table
+                AddClientInfoTable(pdfDocument, client);
 
-                // Salary Disbursements Table
-                pdf.Add(new iTextSharp.text.Paragraph("Salary Disbursements"));
-                var salTable = new PdfPTable(5);
-                salTable.AddCell("ID"); salTable.AddCell("Employee"); salTable.AddCell("Amount"); salTable.AddCell("Status"); salTable.AddCell("Date");
-                foreach (var s in client.SalaryDisbursements)
-                {
-                    salTable.AddCell(s.SalaryId.ToString());
-                    salTable.AddCell(client.Employees.First(e => e.EmployeeId == s.EmployeeId).FullName);
-                    salTable.AddCell(s.Amount.ToString("C"));
-                    salTable.AddCell(s.Status);
-                    salTable.AddCell(s.DisbursementDate.ToShortDateString());
-                }
-                pdf.Add(salTable);
+                // Summary Statistics
+                AddSummarySection(pdfDocument, client);
 
-                pdf.Close();
+                // Employees Section
+                if (client.Employees.Any())
+                    AddEmployeesTable(pdfDocument, client.Employees.ToList());
+
+                // Beneficiaries Section
+                if (client.Beneficiaries.Any())
+                    AddBeneficiariesTable(pdfDocument, client.Beneficiaries.ToList());
+
+                // Payments Section
+                if (client.Payments.Any())
+                    AddPaymentsTable(pdfDocument, client.Payments.ToList());
+
+                // Salary Disbursements Section
+                if (client.SalaryDisbursements.Any())
+                    AddSalaryDisbursementsTable(pdfDocument, client.SalaryDisbursements.ToList(), client.Employees.ToList());
+
+                pdfDocument.Close();
                 return stream.ToArray();
             }
             catch (Exception ex)
@@ -340,33 +305,26 @@ namespace API_BANKING_PAYMENT.Services
             {
                 var bank = await _context.Banks
                     .Include(b => b.Clients)
+                    .ThenInclude(c => c.Payments)
+                    .Include(b => b.Clients)
+                    .ThenInclude(c => c.Employees)
                     .FirstOrDefaultAsync(b => b.BankId == bankId);
 
                 if (bank == null) throw new Exception("Bank not found");
 
                 using var stream = new MemoryStream();
-                var pdf = new iTextSharp.text.Document();
-                PdfWriter.GetInstance(pdf, stream);
-                pdf.Open();
+                var pdfDocument = new iTextSharp.text.Document(PageSize.A4, 40, 40, 60, 40); // Explicit namespace
+                var writer = PdfWriter.GetInstance(pdfDocument, stream);
+                writer.PageEvent = new PdfPageEventHelperz();
 
-                pdf.Add(new iTextSharp.text.Paragraph($"Bank Report - {bank.BankName}"));
-                pdf.Add(new iTextSharp.text.Paragraph($"Address: {bank.Address}"));
-                pdf.Add(new iTextSharp.text.Paragraph($"Email: {bank.ContactEmail}, Phone: {bank.ContactPhone}"));
-                pdf.Add(new iTextSharp.text.Paragraph($"Created At: {bank.CreatedAt}"));
-                pdf.Add(new iTextSharp.text.Paragraph(" "));
+                pdfDocument.Open();
 
-                // Clients Table (basic info)
-                pdf.Add(new iTextSharp.text.Paragraph("Clients"));
-                var clientTable = new PdfPTable(3);
-                clientTable.AddCell("ID"); clientTable.AddCell("Name"); clientTable.AddCell("Registration No");
-                foreach (var c in bank.Clients)
-                {
-                    clientTable.AddCell(c.ClientId.ToString());
-                    clientTable.AddCell(c.ClientName);
-                    clientTable.AddCell(c.RegisterationNumber);
-                }
-                pdf.Add(clientTable);
-                pdf.Close();
+                AddTitleSection(pdfDocument, $"BANK REPORT - {bank.BankName.ToUpper()}");
+                AddBankInfoTable(pdfDocument, bank);
+                AddBankClientsTable(pdfDocument, bank.Clients.ToList());
+                AddBankStatistics(pdfDocument, bank);
+
+                pdfDocument.Close();
                 return stream.ToArray();
             }
             catch (Exception ex)
@@ -385,34 +343,383 @@ namespace API_BANKING_PAYMENT.Services
                     .Include(u => u.Bank)
                     .ToListAsync();
 
+                var totalBanks = await _context.Banks.CountAsync();
+                var totalClients = await _context.Clients.CountAsync();
+                var totalPayments = await _context.Payments.CountAsync();
+
                 using var stream = new MemoryStream();
-                var pdf = new iTextSharp.text.Document();
-                PdfWriter.GetInstance(pdf, stream);
-                pdf.Open();
+                var pdfDocument = new iTextSharp.text.Document(PageSize.A4, 40, 40, 60, 40); // Explicit namespace
+                var writer = PdfWriter.GetInstance(pdfDocument, stream);
+                writer.PageEvent = new PdfPageEventHelperz();
 
-                pdf.Add(new iTextSharp.text.Paragraph("SuperAdmin Report - Bank Users"));
-                pdf.Add(new iTextSharp.text.Paragraph($"Generated At: {DateTime.UtcNow}"));
-                pdf.Add(new iTextSharp.text.Paragraph(" "));
+                pdfDocument.Open();
 
-                var table = new PdfPTable(5);
-                table.AddCell("User ID"); table.AddCell("Full Name"); table.AddCell("Email"); table.AddCell("Bank Name"); table.AddCell("Created At");
-                foreach (var u in bankUsers)
-                {
-                    table.AddCell(u.UserId.ToString());
-                    table.AddCell(u.FullName);
-                    table.AddCell(u.Email);
-                    table.AddCell(u.Bank?.BankName ?? "-");
-                    table.AddCell(u.CreatedAt.ToShortDateString());
-                }
+                AddTitleSection(pdfDocument, "SUPER ADMIN SYSTEM REPORT");
+                AddSystemSummary(pdfDocument, totalBanks, totalClients, totalPayments);
+                AddBankUsersTable(pdfDocument, bankUsers);
 
-                pdf.Add(table);
-                pdf.Close();
+                pdfDocument.Close();
                 return stream.ToArray();
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error generating super admin report");
                 throw;
+            }
+        }
+
+        // ================== PDF HELPER METHODS ==================
+
+        private void AddTitleSection(iTextSharp.text.Document document, string title)
+        {
+            var headerTable = new PdfPTable(1);
+            headerTable.WidthPercentage = 100;
+            headerTable.DefaultCell.Border = Rectangle.NO_BORDER;
+            headerTable.DefaultCell.BackgroundColor = HEADER_BG_COLOR;
+            headerTable.DefaultCell.HorizontalAlignment = Element.ALIGN_CENTER;
+            headerTable.DefaultCell.Padding = 15;
+
+            var titleParagraph = new Paragraph(title, TITLE_FONT);
+            titleParagraph.SpacingAfter = 5f;
+            headerTable.AddCell(titleParagraph);
+
+            var dateParagraph = new Paragraph($"Generated on: {DateTime.UtcNow:MMMM dd, yyyy 'at' hh:mm tt} UTC",
+                FontFactory.GetFont(FontFactory.HELVETICA, 10, BaseColor.WHITE));
+            headerTable.AddCell(dateParagraph);
+
+            document.Add(headerTable);
+            document.Add(new Paragraph(" "));
+        }
+
+        private void AddClientInfoTable(iTextSharp.text.Document document, Client client)
+        {
+            var infoTable = new PdfPTable(2);
+            infoTable.WidthPercentage = 100;
+            infoTable.SetWidths(new float[] { 30, 70 });
+            infoTable.SpacingBefore = 10f;
+            infoTable.SpacingAfter = 15f;
+
+            AddInfoRow(infoTable, "Client Name:", client.ClientName);
+            AddInfoRow(infoTable, "Registration No:", client.RegisterationNumber);
+            AddInfoRow(infoTable, "Bank:", client.Bank?.BankName ?? "N/A");
+            AddInfoRow(infoTable, "Address:", client.Address ?? "N/A");
+            AddInfoRow(infoTable, "Verification Status:", client.VerificationStatus);
+            AddInfoRow(infoTable, "Created Date:", client.CreatedAt.ToString("MMMM dd, yyyy"));
+
+            document.Add(infoTable);
+        }
+
+        private void AddSummarySection(iTextSharp.text.Document document, Client client)
+        {
+            var summaryTable = new PdfPTable(4);
+            summaryTable.WidthPercentage = 100;
+            summaryTable.DefaultCell.Padding = 8;
+            summaryTable.SpacingBefore = 10f;
+            summaryTable.SpacingAfter = 20f;
+
+            // Header
+            AddSummaryHeaderCell(summaryTable, "Employees");
+            AddSummaryHeaderCell(summaryTable, "Beneficiaries");
+            AddSummaryHeaderCell(summaryTable, "Payments");
+            AddSummaryHeaderCell(summaryTable, "Salary Disbursements");
+
+            // Data
+            AddSummaryDataCell(summaryTable, client.Employees.Count.ToString());
+            AddSummaryDataCell(summaryTable, client.Beneficiaries.Count.ToString());
+            AddSummaryDataCell(summaryTable, client.Payments.Count.ToString());
+            AddSummaryDataCell(summaryTable, client.SalaryDisbursements.Count.ToString());
+
+            document.Add(summaryTable);
+        }
+
+        private void AddEmployeesTable(iTextSharp.text.Document document, List<Employee> employees)
+        {
+            AddSectionHeader(document, "Employees");
+
+            var table = new PdfPTable(5);
+            table.WidthPercentage = 100;
+            table.SetWidths(new float[] { 1, 3, 3, 2, 2 });
+            table.SpacingBefore = 10f;
+            table.SpacingAfter = 15f;
+
+            AddTableHeader(table, "ID");
+            AddTableHeader(table, "Full Name");
+            AddTableHeader(table, "Email");
+            AddTableHeader(table, "Salary");
+            AddTableHeader(table, "Status");
+
+            foreach (var emp in employees)
+            {
+                AddTableCell(table, emp.EmployeeId.ToString(), NORMAL_FONT);
+                AddTableCell(table, emp.FullName, NORMAL_FONT);
+                AddTableCell(table, emp.Email, NORMAL_FONT);
+                AddTableCell(table, emp.SalaryAmount.ToString("C"), NORMAL_FONT);
+                AddTableCell(table, "Active", NORMAL_FONT); // Assuming all are active
+            }
+
+            document.Add(table);
+        }
+
+        private void AddBeneficiariesTable(iTextSharp.text.Document document, List<Beneficiary> beneficiaries)
+        {
+            AddSectionHeader(document, "Beneficiaries");
+
+            var table = new PdfPTable(5);
+            table.WidthPercentage = 100;
+            table.SetWidths(new float[] { 1, 3, 3, 2, 2 });
+            table.SpacingBefore = 10f;
+
+            AddTableHeader(table, "ID");
+            AddTableHeader(table, "Full Name");
+            AddTableHeader(table, "Account Number");
+            AddTableHeader(table, "Bank Name");
+            AddTableHeader(table, "IFSC Code");
+
+            foreach (var ben in beneficiaries)
+            {
+                AddTableCell(table, ben.BeneficiaryId.ToString(), NORMAL_FONT);
+                AddTableCell(table, ben.FullName, NORMAL_FONT);
+                AddTableCell(table, ben.AccountNumber.ToString(), NORMAL_FONT);
+                AddTableCell(table, ben.BankName, NORMAL_FONT);
+                AddTableCell(table, ben.Ifsccode ?? "N/A", NORMAL_FONT);
+            }
+
+            document.Add(table);
+        }
+
+        private void AddPaymentsTable(iTextSharp.text.Document document, List<Payment> payments)
+        {
+            AddSectionHeader(document, "Payment History");
+
+            var table = new PdfPTable(5);
+            table.WidthPercentage = 100;
+            table.SetWidths(new float[] { 1, 2, 2, 2, 2 });
+            table.SpacingBefore = 10f;
+
+            AddTableHeader(table, "ID");
+            AddTableHeader(table, "Amount");
+            AddTableHeader(table, "Status");
+            AddTableHeader(table, "Payment Date");
+            AddTableHeader(table, "Beneficiary");
+
+            foreach (var payment in payments)
+            {
+                AddTableCell(table, payment.PaymentId.ToString(), NORMAL_FONT);
+                AddTableCell(table, payment.Amount.ToString("C"), NORMAL_FONT);
+                AddTableCell(table, payment.Status, NORMAL_FONT);
+                AddTableCell(table, payment.PaymentDate.ToString("MMM dd, yyyy"), NORMAL_FONT);
+                AddTableCell(table, payment.Beneficiary?.FullName ?? "N/A", NORMAL_FONT);
+            }
+
+            document.Add(table);
+        }
+
+        private void AddSalaryDisbursementsTable(iTextSharp.text.Document document, List<SalaryDisbursement> disbursements, List<Employee> employees)
+        {
+            AddSectionHeader(document, "Salary Disbursements");
+
+            var table = new PdfPTable(5);
+            table.WidthPercentage = 100;
+            table.SetWidths(new float[] { 1, 3, 2, 2, 2 });
+            table.SpacingBefore = 10f;
+
+            AddTableHeader(table, "ID");
+            AddTableHeader(table, "Employee");
+            AddTableHeader(table, "Amount");
+            AddTableHeader(table, "Status");
+            AddTableHeader(table, "Disbursement Date");
+
+            foreach (var disbursement in disbursements)
+            {
+                var employee = employees.FirstOrDefault(e => e.EmployeeId == disbursement.EmployeeId);
+                AddTableCell(table, disbursement.SalaryId.ToString(), NORMAL_FONT);
+                AddTableCell(table, employee?.FullName ?? "Unknown", NORMAL_FONT);
+                AddTableCell(table, disbursement.Amount.ToString("C"), NORMAL_FONT);
+                AddTableCell(table, disbursement.Status, NORMAL_FONT);
+                AddTableCell(table, disbursement.DisbursementDate.ToString("MMM dd, yyyy"), NORMAL_FONT);
+            }
+
+            document.Add(table);
+        }
+
+        private void AddBankInfoTable(iTextSharp.text.Document document, Bank bank)
+        {
+            var infoTable = new PdfPTable(2);
+            infoTable.WidthPercentage = 100;
+            infoTable.SetWidths(new float[] { 30, 70 });
+            infoTable.SpacingBefore = 10f;
+            infoTable.SpacingAfter = 15f;
+
+            AddInfoRow(infoTable, "Bank Name:", bank.BankName);
+            AddInfoRow(infoTable, "Address:", bank.Address);
+            AddInfoRow(infoTable, "Contact Email:", bank.ContactEmail);
+            AddInfoRow(infoTable, "Contact Phone:", bank.ContactPhone);
+            AddInfoRow(infoTable, "Total Clients:", bank.Clients.Count.ToString());
+            AddInfoRow(infoTable, "Established:", bank.CreatedAt.ToString("MMMM dd, yyyy"));
+
+            document.Add(infoTable);
+        }
+
+        private void AddBankClientsTable(iTextSharp.text.Document document, List<Client> clients)
+        {
+            AddSectionHeader(document, "Bank Clients");
+
+            var table = new PdfPTable(4);
+            table.WidthPercentage = 100;
+            table.SetWidths(new float[] { 1, 3, 3, 2 });
+            table.SpacingBefore = 10f;
+
+            AddTableHeader(table, "ID");
+            AddTableHeader(table, "Client Name");
+            AddTableHeader(table, "Registration No");
+            AddTableHeader(table, "Status");
+
+            foreach (var client in clients)
+            {
+                AddTableCell(table, client.ClientId.ToString(), NORMAL_FONT);
+                AddTableCell(table, client.ClientName, NORMAL_FONT);
+                AddTableCell(table, client.RegisterationNumber, NORMAL_FONT);
+                AddTableCell(table, client.VerificationStatus, NORMAL_FONT);
+            }
+
+            document.Add(table);
+        }
+
+        private void AddBankStatistics(iTextSharp.text.Document document, Bank bank)
+        {
+            var totalEmployees = bank.Clients.Sum(c => c.Employees.Count);
+            var totalPayments = bank.Clients.Sum(c => c.Payments.Count);
+            var totalSalaryDisbursements = bank.Clients.Sum(c => c.SalaryDisbursements.Count);
+
+            var statsTable = new PdfPTable(3);
+            statsTable.WidthPercentage = 100;
+            statsTable.DefaultCell.Padding = 10;
+            statsTable.SpacingBefore = 20f;
+
+            AddSummaryHeaderCell(statsTable, "Total Employees");
+            AddSummaryHeaderCell(statsTable, "Total Payments");
+            AddSummaryHeaderCell(statsTable, "Salary Disbursements");
+
+            AddSummaryDataCell(statsTable, totalEmployees.ToString());
+            AddSummaryDataCell(statsTable, totalPayments.ToString());
+            AddSummaryDataCell(statsTable, totalSalaryDisbursements.ToString());
+
+            document.Add(statsTable);
+        }
+
+        private void AddSystemSummary(iTextSharp.text.Document document, int totalBanks, int totalClients, int totalPayments)
+        {
+            var statsTable = new PdfPTable(3);
+            statsTable.WidthPercentage = 100;
+            statsTable.DefaultCell.Padding = 12;
+            statsTable.SpacingBefore = 10f;
+            statsTable.SpacingAfter = 20f;
+
+            AddSummaryHeaderCell(statsTable, "Total Banks");
+            AddSummaryHeaderCell(statsTable, "Total Clients");
+            AddSummaryHeaderCell(statsTable, "Total Payments");
+
+            AddSummaryDataCell(statsTable, totalBanks.ToString());
+            AddSummaryDataCell(statsTable, totalClients.ToString());
+            AddSummaryDataCell(statsTable, totalPayments.ToString());
+
+            document.Add(statsTable);
+        }
+
+        private void AddBankUsersTable(iTextSharp.text.Document document, List<User> bankUsers)
+        {
+            AddSectionHeader(document, "Bank Users");
+
+            var table = new PdfPTable(5);
+            table.WidthPercentage = 100;
+            table.SetWidths(new float[] { 1, 3, 3, 2, 2 });
+            table.SpacingBefore = 10f;
+
+            AddTableHeader(table, "ID");
+            AddTableHeader(table, "Full Name");
+            AddTableHeader(table, "Email");
+            AddTableHeader(table, "Bank");
+            AddTableHeader(table, "Created Date");
+
+            foreach (var user in bankUsers)
+            {
+                AddTableCell(table, user.UserId.ToString(), NORMAL_FONT);
+                AddTableCell(table, user.FullName, NORMAL_FONT);
+                AddTableCell(table, user.Email, NORMAL_FONT);
+                AddTableCell(table, user.Bank?.BankName ?? "N/A", NORMAL_FONT);
+                AddTableCell(table, user.CreatedAt.ToString("MMM dd, yyyy"), NORMAL_FONT);
+            }
+
+            document.Add(table);
+        }
+
+        // ================== HELPER METHODS ==================
+
+        private void AddInfoRow(PdfPTable table, string label, string value)
+        {
+            AddTableCell(table, label, BOLD_FONT, LIGHT_GRAY);
+            AddTableCell(table, value ?? "N/A", NORMAL_FONT);
+        }
+
+        private void AddTableHeader(PdfPTable table, string text)
+        {
+            var cell = new PdfPCell(new Phrase(text, HEADER_FONT));
+            cell.BackgroundColor = ACCENT_COLOR;
+            cell.HorizontalAlignment = Element.ALIGN_CENTER;
+            cell.Padding = 8;
+            table.AddCell(cell);
+        }
+
+        private void AddTableCell(PdfPTable table, string text, Font font, BaseColor bgColor = null)
+        {
+            var cell = new PdfPCell(new Phrase(text, font));
+            cell.BackgroundColor = bgColor;
+            cell.Padding = 6;
+            cell.BorderWidth = 0.5f;
+            table.AddCell(cell);
+        }
+
+        private void AddSectionHeader(iTextSharp.text.Document document, string title)
+        {
+            var header = new Paragraph(title, SUBHEADER_FONT);
+            header.SpacingBefore = 20f;
+            header.SpacingAfter = 10f;
+            document.Add(header);
+        }
+
+        private void AddSummaryHeaderCell(PdfPTable table, string text)
+        {
+            var cell = new PdfPCell(new Phrase(text, BOLD_FONT));
+            cell.BackgroundColor = ACCENT_COLOR;
+            cell.HorizontalAlignment = Element.ALIGN_CENTER;
+            cell.Padding = 10;
+            table.AddCell(cell);
+        }
+
+        private void AddSummaryDataCell(PdfPTable table, string text)
+        {
+            var cell = new PdfPCell(new Phrase(text, FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 12, ACCENT_COLOR)));
+            cell.HorizontalAlignment = Element.ALIGN_CENTER;
+            cell.Padding = 10;
+            cell.BorderWidth = 1f;
+            table.AddCell(cell);
+        }
+
+        // Page event helper for headers/footers
+        private class PdfPageEventHelperz : PdfPageEventHelper
+        {
+            public override void OnEndPage(PdfWriter writer, iTextSharp.text.Document document)
+            {
+                var footer = new Paragraph($"Page {writer.PageNumber}",
+                    FontFactory.GetFont(FontFactory.HELVETICA, 8, BaseColor.GRAY));
+                footer.Alignment = Element.ALIGN_CENTER;
+
+                var footerTable = new PdfPTable(1);
+                footerTable.TotalWidth = document.PageSize.Width - document.LeftMargin - document.RightMargin;
+                footerTable.DefaultCell.Border = Rectangle.NO_BORDER;
+                footerTable.DefaultCell.HorizontalAlignment = Element.ALIGN_CENTER;
+                footerTable.AddCell(footer);
+                footerTable.WriteSelectedRows(0, -1, document.LeftMargin, document.BottomMargin, writer.DirectContent);
             }
         }
 

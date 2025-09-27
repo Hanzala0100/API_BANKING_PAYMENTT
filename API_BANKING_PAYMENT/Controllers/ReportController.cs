@@ -7,7 +7,7 @@ namespace API_BANKING_PAYMENT.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize] // JWT required
+    [Authorize]
     public class ReportController : ControllerBase
     {
         private readonly IReportService _reportService;
@@ -17,8 +17,8 @@ namespace API_BANKING_PAYMENT.Controllers
             _reportService = reportService;
         }
 
-        // ================= Generate & Upload Report =================
-        [HttpPost("generate")]
+        // ================= Generate & Upload Report  =================
+        [HttpPost("generate-report")]
         public async Task<IActionResult> GenerateReport()
         {
             var result = await _reportService.GenerateAndUploadReportAsync();
@@ -37,9 +37,11 @@ namespace API_BANKING_PAYMENT.Controllers
             {
                 Success = true,
                 Message = result.Message,
-                Data = result.Data
+                Data = result.Data,
             });
         }
+
+
 
         // ================= Get All Reports for Current User =================
         [HttpGet("my-reports")]
@@ -74,15 +76,10 @@ namespace API_BANKING_PAYMENT.Controllers
             if (!result.Success)
             {
                 if (result.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
-                    return NotFound(new
-                    {
-                        Success = false,
-                        Message = result.Message
-                    });
+                    return NotFound(new { Success = false, Message = result.Message });
 
-                if (result.Message.Contains("not authorized", StringComparison.OrdinalIgnoreCase) ||
-                    result.Message.Contains("not authenticated", StringComparison.OrdinalIgnoreCase))
-                    return Forbid(result.Message);
+                if (result.Message.Contains("not authorized", StringComparison.OrdinalIgnoreCase))
+                    return Unauthorized(new { Success = false, Message = result.Message });
 
                 return BadRequest(new
                 {
@@ -100,8 +97,8 @@ namespace API_BANKING_PAYMENT.Controllers
             });
         }
 
-        // ================= Download PDF by ReportId =================
-        [HttpGet("download/{id}")]
+        // ================= Download Report =================
+        [HttpGet("download-report/{id:long}")]
         public async Task<IActionResult> DownloadReport(long id)
         {
             var result = await _reportService.GetReportByIdAsync(id);
@@ -109,30 +106,34 @@ namespace API_BANKING_PAYMENT.Controllers
             if (!result.Success)
             {
                 if (result.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
-                    return NotFound(new
-                    {
-                        Success = false,
-                        Message = result.Message
-                    });
+                    return NotFound(new { Success = false, Message = result.Message });
 
                 if (result.Message.Contains("not authorized", StringComparison.OrdinalIgnoreCase))
-                    return Forbid(result.Message);
+                    return Unauthorized(new { Success = false, Message = result.Message });
 
-                return BadRequest(new
-                {
-                    Success = false,
-                    Message = result.Message
-                });
+                return BadRequest(new { Success = false, Message = result.Message });
             }
 
-            // Return the file URL for download
-            return Ok(new
+            try
             {
-                Success = true,
-                Message = "Report download URL retrieved successfully",
-                Data = result.Data
-            });
+                using var httpClient = new HttpClient();
+                var pdfBytes = await httpClient.GetByteArrayAsync(result.Data.FileUrl);
+
+                var fileName = $"{result.Data.ReportType}_Report_{DateTime.UtcNow:yyyyMMddHHmmss}.pdf";
+                return File(pdfBytes, "application/pdf", fileName); 
+            }
+            catch (Exception ex)
+            {
+                return Ok(new
+                {
+                    Success = true,
+                    Message = "Report found but direct download failed",
+                    Data = result.Data,
+                    DownloadUrl = result.Data.FileUrl
+                });
+            }
         }
+
 
         // ================= Delete Report =================
         [HttpDelete("{id}")]
@@ -143,14 +144,10 @@ namespace API_BANKING_PAYMENT.Controllers
             if (!result.Success)
             {
                 if (result.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
-                    return NotFound(new
-                    {
-                        Success = false,
-                        Message = result.Message
-                    });
+                    return NotFound(new { Success = false, Message = result.Message });
 
                 if (result.Message.Contains("not authorized", StringComparison.OrdinalIgnoreCase))
-                    return Forbid(result.Message);
+                    return Unauthorized(new { Success = false, Message = result.Message });
 
                 return BadRequest(new
                 {
@@ -166,6 +163,47 @@ namespace API_BANKING_PAYMENT.Controllers
                 Message = result.Message,
                 Data = result.Data
             });
+        }
+
+        // ================= Get Report Statistics =================
+        [HttpGet("statistics")]
+        public async Task<IActionResult> GetReportStatistics()
+        {
+            try
+            {
+                var reportsResult = await _reportService.GetReportsForCurrentUserAsync();
+
+                if (!reportsResult.Success)
+                    return BadRequest(new { Success = false, Message = reportsResult.Message });
+
+                var reports = reportsResult.Data?.ToList() ?? new List<ReportDTO>();
+
+                var statistics = new
+                {
+                    TotalReports = reports.Count,
+                    ReportsByType = reports.GroupBy(r => r.ReportType)
+                                          .ToDictionary(g => g.Key, g => g.Count()),
+                    RecentReports = reports.OrderByDescending(r => r.GeneratedAt)
+                                          .Take(5)
+                                          .Select(r => new { r.ReportId, r.ReportType, r.GeneratedAt })
+                };
+
+                return Ok(new
+                {
+                    Success = true,
+                    Message = "Report statistics retrieved successfully",
+                    Data = statistics
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new
+                {
+                    Success = false,
+                    Message = "Error retrieving report statistics",
+                    Errors = new List<string> { ex.Message }
+                });
+            }
         }
     }
 }
