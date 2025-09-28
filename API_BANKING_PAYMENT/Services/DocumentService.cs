@@ -57,7 +57,9 @@ public class DocumentService : IDocumentService
             var uploadParams = new ImageUploadParams
             {
                 File = fileDesc,
-                PublicId = Guid.NewGuid().ToString("N")
+                PublicId = Guid.NewGuid().ToString("N"),
+                AccessMode = "public"
+                
             };
             result = await _cloudinary.UploadAsync(uploadParams);
         }
@@ -66,7 +68,8 @@ public class DocumentService : IDocumentService
             var uploadParams = new VideoUploadParams
             {
                 File = fileDesc,
-                PublicId = Guid.NewGuid().ToString("N")
+                PublicId = Guid.NewGuid().ToString("N"),
+                AccessMode = "public"
             };
             result = await _cloudinary.UploadAsync(uploadParams);
         }
@@ -75,7 +78,8 @@ public class DocumentService : IDocumentService
             var rawParams = new RawUploadParams
             {
                 File = fileDesc,
-                PublicId = Guid.NewGuid().ToString("N")
+                PublicId = Guid.NewGuid().ToString("N"),
+                AccessMode = "public"
             };
             result = await _cloudinary.UploadAsync(rawParams);
         }

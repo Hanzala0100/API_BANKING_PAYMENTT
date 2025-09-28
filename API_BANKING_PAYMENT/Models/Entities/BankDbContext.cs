@@ -161,6 +161,7 @@ public partial class BankDbContext : DbContext
             entity.Property(e => e.FileUrl).HasMaxLength(255).IsUnicode(false);
             entity.Property(e => e.GeneratedAt).HasColumnType("datetime");
             entity.Property(e => e.ReportType).HasMaxLength(255).IsUnicode(false);
+        
 
             entity.HasOne(d => d.GeneratedByNavigation).WithMany(p => p.Reports)
                 .HasForeignKey(d => d.GeneratedBy)

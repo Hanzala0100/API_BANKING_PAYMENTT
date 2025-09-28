@@ -1,4 +1,5 @@
-﻿using System;
+﻿using API_BANKING_PAYMENT.Models.Enum;
+using System;
 using System.Collections.Generic;
 
 namespace API_BANKING_PAYMENT.Models.Entities;
@@ -9,7 +10,7 @@ public partial class Report
 
     public long GeneratedBy { get; set; }
 
-    public string ReportType { get; set; } = null!;
+    public string ReportType { get; set; }
 
     public DateTime GeneratedAt { get; set; }
 

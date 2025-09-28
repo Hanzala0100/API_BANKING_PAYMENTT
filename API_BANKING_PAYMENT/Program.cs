@@ -57,6 +57,14 @@ namespace API_BANKING_PAYMENT
             builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
             builder.Services.AddScoped<IPaymentService, PaymentService>();
 
+            //User Context
+            builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+            builder.Services.AddScoped<IUserContext, UserContext>();
+
+            //Reports
+            builder.Services.AddScoped<IReportRepository, ReportRepository>();
+            builder.Services.AddScoped<IReportService, ReportService>();
+
             //beneficiary
             builder.Services.AddScoped<IBeneficiaryService, BeneficiaryService>();
             builder.Services.AddScoped<IBeneficiaryRepository, BeneficiaryRepository>();
@@ -67,7 +75,6 @@ namespace API_BANKING_PAYMENT
             builder.Services.Configure<ReCaptchaSettings>(builder.Configuration.GetSection("ReCaptchaSettings"));
             builder.Services.AddHttpClient(); 
             builder.Services.AddScoped<ReCaptchaService>();
-
 
             //Admin
             builder.Services.AddScoped<ISuperAdminService, SuperAdminService>();
