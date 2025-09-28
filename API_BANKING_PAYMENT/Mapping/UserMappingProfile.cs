@@ -10,9 +10,9 @@ namespace API_BANKING_PAYMENT.Mapping
         public UserMappingProfile()
         {
             CreateMap<User, UserDTO>()
-                .ForMember(dest => dest.BankName,
-                           opt => opt.MapFrom(src => src.Bank != null ? src.Bank.BankName : null));
-                
+                .ForMember(dest => dest.BankName,opt => opt.MapFrom(src => src.Bank != null ? src.Bank.BankName : null))
+                .ForMember(dest => dest.ClientName,opt => opt.MapFrom(src => src.Client != null ? src.Client.ClientName : null));
+
 
             CreateMap<RegisterDTO, User>()
                 .ForMember(dest => dest.PasswordHash, opt => opt.Ignore())

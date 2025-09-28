@@ -10,5 +10,10 @@
         public int? BankId { get; set; }
         public string? BankName { get; set; }
         public int? ClientId { get; set; }
+        public string? ClientName { get; set; }
+
     }
+
+
+
 }
