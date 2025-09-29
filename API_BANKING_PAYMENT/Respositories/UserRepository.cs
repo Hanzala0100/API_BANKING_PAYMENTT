@@ -55,5 +55,13 @@ namespace API_BANKING_PAYMENT.Respositories
              return await _context.Users
                     .FirstOrDefaultAsync(u => u.BankId == bankId);
         }
+
+        public async Task<User> GetClientById(long id)
+        {
+            return  await _context.Users
+                .Include(u => u.Bank)
+                .FirstOrDefaultAsync(u => u.UserId == id);
+        }
+        
     }
 }

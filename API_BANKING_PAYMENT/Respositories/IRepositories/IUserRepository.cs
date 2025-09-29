@@ -11,5 +11,6 @@ namespace API_BANKING_PAYMENT.Respositories.IRepositories
         Task<IEnumerable<User>> GetUsersByBankId(long bankId);
         Task<IEnumerable<User>> GetUsersByClientId(long clientId);
         Task<User> GetBankUserBankId(long bankId);
+        Task<User> GetClientById(long id);
     }
 }

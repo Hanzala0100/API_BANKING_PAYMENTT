@@ -23,6 +23,14 @@ namespace API_BANKING_PAYMENT.Respositories
                 .ToListAsync();
         }
 
+
+        public async Task<IEnumerable<Client>> GetClientsAllAsync()
+        {
+            return await _context.Clients
+                .Include(c => c.Bank)
+                .ToListAsync();
+        }
+
         public async Task<Client> GetClientByRegisterationNumber(string registerationNumber)
         {
             return await _context.Clients

@@ -132,7 +132,7 @@ namespace API_BANKING_PAYMENT.Services
         {
             try
             {
-                var banks = await _bankRepository.GetAll();
+                var banks = await _bankRepository.GetAllBanksAsync();
 
                 if (banks == null || !banks.Any())
                 {

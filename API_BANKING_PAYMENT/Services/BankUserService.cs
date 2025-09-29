@@ -291,7 +291,7 @@ namespace API_BANKING_PAYMENT.Services
         {
             try
             {
-                var existingUser = await _userRepository.GetById(clientUserId);
+                var existingUser = await _userRepository.GetClientById(clientUserId);
                 if (existingUser == null)
                     return BaseResponseDTO<bool>.ErrorResult("Client user not found");
 
@@ -315,7 +315,7 @@ namespace API_BANKING_PAYMENT.Services
         {
             try
             {
-                var clients = await _clientRepository.GetAll();
+                var clients = await _clientRepository.GetClientsAllAsync();
                 var clientDTOs = _mapper.Map<IEnumerable<ClientDTO>>(clients);
                 return BaseResponseDTO<IEnumerable<ClientDTO>>.SuccessResult(clientDTOs, "Clients retrieved successfully");
             }

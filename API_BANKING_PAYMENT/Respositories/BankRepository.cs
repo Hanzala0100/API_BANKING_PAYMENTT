@@ -26,5 +26,16 @@ namespace API_BANKING_PAYMENT.Respositories
             return await _context.Banks.FirstOrDefaultAsync(b => b.BankName == Name);
         }
 
+        public async Task<List<Bank>> GetAllBanksAsync()
+        {
+            return await _context.Banks
+                .Include(b => b.Clients)
+                .Include(b => b.Users)
+                .ToListAsync();
+        }
+
+
+
+
     }
 }
