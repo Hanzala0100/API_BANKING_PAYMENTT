@@ -315,7 +315,7 @@ namespace API_BANKING_PAYMENT.Services
         {
             try
             {
-                var clients = await _clientRepository.GetClientsAllAsync(long id);
+                var clients = await _clientRepository.GetClientsAllAsync(id);  
                 var clientDTOs = _mapper.Map<IEnumerable<ClientDTO>>(clients);
                 return BaseResponseDTO<IEnumerable<ClientDTO>>.SuccessResult(clientDTOs, "Clients retrieved successfully");
             }

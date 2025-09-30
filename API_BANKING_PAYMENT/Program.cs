@@ -72,23 +72,20 @@ namespace API_BANKING_PAYMENT
             //Admin
             builder.Services.AddScoped<ISuperAdminService, SuperAdminService>();
 
+            //ReCaptcha
+            builder.Services.AddScoped<IReCaptchaService, ReCaptchaService>();
+
 
             //Settings for 3rd party Api and Service
             builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
             builder.Services.Configure<ReCaptchaSettings>(builder.Configuration.GetSection("ReCaptchaSettings"));
-            builder.Services.AddHttpClient(); 
             builder.Services.AddScoped<ReCaptchaService>();
+                builder.Services.AddHttpClient(); 
+            //Admin
+            builder.Services.AddScoped<ISuperAdminService, SuperAdminService>();
 
-            //Cors allowed 
-            builder.Services.AddCors(options =>
-            {
-                options.AddPolicy("AllowAngularLocalhost", policy =>
-                {
-                    policy.WithOrigins("http://localhost:4200")  
-                          .AllowAnyMethod()
-                          .AllowAnyHeader();
-                });
-            });
+               
+
             // Add Authentication
             builder.Services.AddAuthentication(opt =>
             {
@@ -118,8 +115,28 @@ namespace API_BANKING_PAYMENT
             .MinimumLevel.Information()
             .WriteTo.File("Logs/myapp-.log", rollingInterval: RollingInterval.Day)
             .CreateLogger();
-                    builder.Host.UseSerilog(); 
+                    builder.Host.UseSerilog();
 
+
+            //Adding CORS Policy
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowAngularApp",
+                    policy =>
+                    {
+                        policy.WithOrigins("http://localhost:4200", "https://localhost:4200") // Your Angular app URL
+                              .AllowAnyHeader()
+                              .AllowAnyMethod()
+                              .AllowCredentials(); // If you're using cookies/auth
+                    });
+            });
+            //recaptcha
+
+            builder.Services.AddHttpClient("Recaptcha", client =>
+            {
+                client.BaseAddress = new Uri("https://www.google.com/");
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("MyApp/1.0");
+            });
 
             // Configure JWT to use Swagger
             builder.Services.AddSwaggerGen(options =>
@@ -192,6 +209,9 @@ namespace API_BANKING_PAYMENT
                 });
             }
             app.UseCors("AllowAngularLocalhost");
+            app.UseCors("AllowAngularApp");
+
+
 
             app.UseHttpsRedirection();
             app.UseAuthorization();
