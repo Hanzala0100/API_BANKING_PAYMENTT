@@ -19,41 +19,35 @@ namespace API_BANKING_PAYMENT.Services
             _httpClientFactory = httpClientFactory;
             _settings = settings.Value;
             _logger = logger;
+
+            // check if secret key is loaded
+            
         }
 
         public async Task<bool> VerifyTokenAsync(string token)
         {
             try
             {
-                var client = _httpClientFactory.CreateClient();
-                var response = await client.GetStringAsync(
-                    $"https://www.google.com/recaptcha/api/siteverify?secret={_settings.SecretKey}&response={token}"
-                );
+                // Log the secret key to verify it's being loaded
+                _logger.LogInformation("Using reCAPTCHA secret key: {SecretKey}", _settings.SecretKey);
 
+                var client = _httpClientFactory.CreateClient();
+                var url = $"https://www.google.com/recaptcha/api/siteverify?secret={_settings.SecretKey}&response={token}";
+
+                _logger.LogInformation("Calling reCAPTCHA API: {Url}", url);
+
+                var response = await client.GetStringAsync(url);
                 var reCaptchaResponse = System.Text.Json.JsonSerializer.Deserialize<ReCaptchaResponse>(response);
 
-                if (reCaptchaResponse == null)
-                {
-                    _logger.LogWarning("ReCAPTCHA verification returned null response for token: {Token}", token);
-                    return false;
-                }
+                _logger.LogInformation("ReCAPTCHA verification response: {Response}",
+                    System.Text.Json.JsonSerializer.Serialize(reCaptchaResponse));
 
-                if (reCaptchaResponse.Success)
-                {
-                    _logger.LogInformation("ReCAPTCHA verification succeeded for token: {Token}", token);
-                }
-                else
-                {
-                    _logger.LogWarning("ReCAPTCHA verification failed. Token: {Token}, Errors: {Errors}",
-                        token, string.Join(", ", reCaptchaResponse.ErrorCodes ?? new List<string>()));
-                }
-
-                return reCaptchaResponse.Success;
+                return reCaptchaResponse?.Success ?? false;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred while verifying ReCAPTCHA token: {Token}", token);
-                throw;
+                _logger.LogError(ex, "Error verifying reCAPTCHA token");
+                return false;
             }
         }
     }
