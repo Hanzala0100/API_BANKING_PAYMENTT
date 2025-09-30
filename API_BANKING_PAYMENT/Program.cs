@@ -80,19 +80,12 @@ namespace API_BANKING_PAYMENT
             builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
             builder.Services.Configure<ReCaptchaSettings>(builder.Configuration.GetSection("ReCaptchaSettings"));
             builder.Services.AddScoped<ReCaptchaService>();
-            builder.Services.AddHttpClient(); 
+                builder.Services.AddHttpClient(); 
+            //Admin
+            builder.Services.AddScoped<ISuperAdminService, SuperAdminService>();
 
+               
 
-            //Cors allowed 
-            builder.Services.AddCors(options =>
-            {
-                options.AddPolicy("AllowAngularLocalhost", policy =>
-                {
-                    policy.WithOrigins("http://localhost:4200")  
-                          .AllowAnyMethod()
-                          .AllowAnyHeader();
-                });
-            });
             // Add Authentication
             builder.Services.AddAuthentication(opt =>
             {
@@ -216,6 +209,9 @@ namespace API_BANKING_PAYMENT
                 });
             }
             app.UseCors("AllowAngularLocalhost");
+            app.UseCors("AllowAngularApp");
+
+
 
             app.UseHttpsRedirection();
             app.UseAuthorization();
