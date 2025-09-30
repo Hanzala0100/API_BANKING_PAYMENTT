@@ -2,6 +2,7 @@
 {
     public class EmployeeDTO
     {
+        public long EmployeeId { get; set; }
         public long ClientId { get; set; }
         public string UserName { get; set; }
         public string FullName { get; set; } = null!;
