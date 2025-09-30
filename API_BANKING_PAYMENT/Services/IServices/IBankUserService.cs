@@ -8,7 +8,7 @@ namespace API_BANKING_PAYMENT.Services.IServices
         // Client  
         Task<BaseResponseDTO<ClientDTO>> CreateClientAsync(ClientCreationDTO clientDTO);
         Task<BaseResponseDTO<ClientDTO>> GetClientByIdAsync(long clientId);
-        Task<BaseResponseDTO<IEnumerable<ClientDTO>>> GetAllClientsAsync();
+        Task<BaseResponseDTO<IEnumerable<ClientDTO>>> GetAllClientsAsync(long id);
         Task<BaseResponseDTO<ClientDTO>> UpdateClientAsync(ClientDTO clientDTO);
         Task<BaseResponseDTO<bool>> DeleteClientAsync(long clientId);
 

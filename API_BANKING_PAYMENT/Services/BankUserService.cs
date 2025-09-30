@@ -311,11 +311,11 @@ namespace API_BANKING_PAYMENT.Services
             }
         }
 
-        public async Task<BaseResponseDTO<IEnumerable<ClientDTO>>> GetAllClientsAsync()
+        public async Task<BaseResponseDTO<IEnumerable<ClientDTO>>> GetAllClientsAsync(long id)
         {
             try
             {
-                var clients = await _clientRepository.GetClientsAllAsync();
+                var clients = await _clientRepository.GetClientsAllAsync(long id);
                 var clientDTOs = _mapper.Map<IEnumerable<ClientDTO>>(clients);
                 return BaseResponseDTO<IEnumerable<ClientDTO>>.SuccessResult(clientDTOs, "Clients retrieved successfully");
             }

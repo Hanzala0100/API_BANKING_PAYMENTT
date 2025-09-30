@@ -24,9 +24,10 @@ namespace API_BANKING_PAYMENT.Respositories
         }
 
 
-        public async Task<IEnumerable<Client>> GetClientsAllAsync()
+        public async Task<IEnumerable<Client>> GetClientsAllAsync(long id)
         {
             return await _context.Clients
+                .Where(cl => cl.BankId == id)
                 .Include(c => c.Bank)
                 .ToListAsync();
         }

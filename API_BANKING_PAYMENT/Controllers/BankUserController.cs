@@ -56,17 +56,26 @@ namespace API_BANKING_PAYMENT.Controllers
         [HttpGet("clients")]
         public async Task<ActionResult<BaseResponseDTO<IEnumerable<ClientDTO>>>> GetAllClients()
         {
-            var result = await _bankUserService.GetAllClientsAsync();
+            // get bankId from claims
+            var bankIdClaim = User.FindFirst("bankId")?.Value;
+
+            if (string.IsNullOrEmpty(bankIdClaim) || !long.TryParse(bankIdClaim, out var bankId))
+            {
+                return Unauthorized(new BaseResponseDTO<IEnumerable<ClientDTO>>
+                {
+                    Success = false,
+                    Message = "BankId claim missing or invalid."
+                });
+            }
+
+            var result = await _bankUserService.GetAllClientsAsync(bankId);
 
             if (result.Success)
-            {
                 return Ok(result);
-            }
-            else
-            {
-                return StatusCode(500, result);
-            }
+
+            return StatusCode(500, result);
         }
+
 
         [HttpGet("clients/{clientId}")]
         public async Task<ActionResult<BaseResponseDTO<ClientDTO>>> GetClientById(long clientId)

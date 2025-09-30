@@ -7,7 +7,7 @@ namespace API_BANKING_PAYMENT.Respositories.IRepositories
         Task<IEnumerable<Client>> GetClientsByBankId(long bankId);
         Task<Client> GetClientByRegisterationNumber(string registerationNumber);
         Task<Client> AddClientAsync(Client client);
-        Task<IEnumerable<Client>> GetClientsAllAsync();
+        Task<IEnumerable<Client>> GetClientsAllAsync(long id);
         // Docs
         Task<IEnumerable<Document>> GetClientDocumentsAsync(long clientId);
         Task<bool> ClientHasDocumentsAsync(long clientId);
