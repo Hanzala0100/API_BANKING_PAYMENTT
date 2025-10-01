@@ -9,5 +9,12 @@ namespace API_BANKING_PAYMENT.Respositories.IRepositories
         Task<User> GetByUsernameAsync(string username);
         Task<bool> EmployeeExistsAsync(long clientId, string email, long accountNumber);
         Task<bool> AddRangeAsync(IEnumerable<Employee> employees);
+        Task<(IEnumerable<Employee> Employees, int TotalCount)> GetPaginatedAsync(
+            long clientId,
+            int pageNumber,
+            int pageSize,
+            string? searchTerm = null,
+            string? sortBy = null,
+            bool sortDescending = false);
     }
 }

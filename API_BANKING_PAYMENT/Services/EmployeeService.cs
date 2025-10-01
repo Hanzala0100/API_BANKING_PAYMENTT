@@ -282,5 +282,54 @@ namespace API_BANKING_PAYMENT.Services
                 Map(m => m.SalaryAmount).Name("SalaryAmount", "Salary", "Amount");
             }
         }
+
+        //Paginated Retrieval of Employees
+        public async Task<BaseResponseDTO<PaginatedResponseDTO<EmployeeDTO>>> GetAllPaginatedAsync(PaginationRequestDTO paginationRequest)
+        {
+            try
+            {
+                // Validate client exists
+                var client = await _clientRepository.GetById(paginationRequest.ClientId);
+                if (client == null)
+                {
+                    return BaseResponseDTO<PaginatedResponseDTO<EmployeeDTO>>.ErrorResult("Client not found.");
+                }
+
+                var (employees, totalCount) = await _repository.GetPaginatedAsync(
+                    paginationRequest.ClientId, 
+                    paginationRequest.PageNumber,
+                    paginationRequest.PageSize,
+                    paginationRequest.SearchTerm,
+                    paginationRequest.SortBy,
+                    paginationRequest.SortDescending);
+
+                var employeeDtos = _mapper.Map<IEnumerable<EmployeeDTO>>(employees);
+
+                var paginatedResponse = new PaginatedResponseDTO<EmployeeDTO>
+                {
+                    Data = employeeDtos,
+                    Pagination = new PaginationMetadataDTO
+                    {
+                        CurrentPage = paginationRequest.PageNumber,
+                        PageSize = paginationRequest.PageSize,
+                        TotalCount = totalCount,
+                        TotalPages = (int)Math.Ceiling(totalCount / (double)paginationRequest.PageSize)
+                    },
+                    Message = "Employees retrieved successfully.",
+                    Success = true
+                };
+
+                return BaseResponseDTO<PaginatedResponseDTO<EmployeeDTO>>.SuccessResult(
+                    paginatedResponse,
+                    "Employees retrieved successfully.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving paginated employees for Client ID: {ClientId}", paginationRequest.ClientId);
+                return BaseResponseDTO<PaginatedResponseDTO<EmployeeDTO>>.ErrorResult(
+                    "Error retrieving employees",
+                    new List<string> { ex.Message });
+            }
+        }
     }
 }
