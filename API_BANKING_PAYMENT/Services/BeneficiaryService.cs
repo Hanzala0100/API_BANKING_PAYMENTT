@@ -1,5 +1,6 @@
 ﻿using API_BANKING_PAYMENT.Models.DTO;
 using API_BANKING_PAYMENT.Models.Entities;
+using API_BANKING_PAYMENT.Respositories;
 using API_BANKING_PAYMENT.Respositories.IRepositories;
 using API_BANKING_PAYMENT.Services.IServices;
 using AutoMapper;
@@ -151,6 +152,53 @@ namespace API_BANKING_PAYMENT.Services
             {
                 _logger.LogError(ex, "Error updating beneficiary with Id: {Id}", id);
                 return BaseResponseDTO<BeneficiaryDTO>.ErrorResult("Failed to update beneficiary.", new List<string> { ex.Message });
+            }
+        }
+        public async Task<BaseResponseDTO<PaginatedResponseDTO<BeneficiaryDTO>>> GetAllPaginatedAsync(PaginationRequestDTO paginationRequest)
+        {
+            try
+            {
+                // Validate client exists
+                var client = await _repository.GetById(paginationRequest.ClientId);
+                if (client == null)
+                {
+                    return BaseResponseDTO<PaginatedResponseDTO<BeneficiaryDTO>>.ErrorResult("Client not found.");
+                }
+
+                var (beneficiaries, totalCount) = await _repository.GetPaginatedAsync(
+                    paginationRequest.ClientId,
+                    paginationRequest.PageNumber,
+                    paginationRequest.PageSize,
+                    paginationRequest.SearchTerm,
+                    paginationRequest.SortBy,
+                    paginationRequest.SortDescending);
+
+                var beneficiaryDtos = _mapper.Map<IEnumerable<BeneficiaryDTO>>(beneficiaries);
+
+                var paginatedResponse = new PaginatedResponseDTO<BeneficiaryDTO>
+                {
+                    Data = beneficiaryDtos,
+                    Pagination = new PaginationMetadataDTO
+                    {
+                        CurrentPage = paginationRequest.PageNumber,
+                        PageSize = paginationRequest.PageSize,
+                        TotalCount = totalCount,
+                        TotalPages = (int)Math.Ceiling(totalCount / (double)paginationRequest.PageSize)
+                    },
+                    Message = "Beneficiaries retrieved successfully.",
+                    Success = true
+                };
+
+                return BaseResponseDTO<PaginatedResponseDTO<BeneficiaryDTO>>.SuccessResult(
+                    paginatedResponse,
+                    "Beneficiaries retrieved successfully.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving paginated beneficiaries for Client ID: {ClientId}", paginationRequest.ClientId);
+                return BaseResponseDTO<PaginatedResponseDTO<BeneficiaryDTO>>.ErrorResult(
+                    "Error retrieving beneficiaries",
+                    new List<string> { ex.Message });
             }
         }
     }

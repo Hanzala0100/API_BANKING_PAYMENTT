@@ -823,6 +823,33 @@ namespace API_BANKING_PAYMENT.Controllers
             }
         }
 
+        //Employee Paginated testing
+        [HttpGet("paginated-employee")]
+        public async Task<IActionResult> GetPaginatedEmployee([FromQuery] PaginationRequestDTO paginationRequest)
+        {
+            var result = await _employeeService.GetAllPaginatedAsync(paginationRequest);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
+        //Beneficiary Paginated
+
+        [HttpGet("paginated-beneficiary")]
+        public async Task<IActionResult> GetPaginatedBeneficiary([FromQuery] PaginationRequestDTO paginationRequest)
+        {
+            var result = await _beneficiaryService.GetAllPaginatedAsync(paginationRequest);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
 
     }
+
+
 }
