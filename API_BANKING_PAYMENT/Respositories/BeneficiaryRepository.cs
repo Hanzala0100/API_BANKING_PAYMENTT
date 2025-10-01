@@ -31,6 +31,59 @@ namespace API_BANKING_PAYMENT.Respositories
             return await _context.Beneficiaries
                 .FirstOrDefaultAsync(b => b.ClientId == clientId && b.AccountNumber == accountNumber);
         }
+
+        public async Task<(IEnumerable<Beneficiary> Beneficiaries, int TotalCount)> GetPaginatedAsync(
+            long clientId,
+            int pageNumber,
+            int pageSize,
+            string? searchTerm = null,
+            string? sortBy = null,
+            bool sortDescending = false)
+        {
+            // Start with client filter
+            var query = _context.Beneficiaries.Where(b => b.ClientId == clientId);
+
+            // Apply search filter
+            // Alternative using EF.Functions.Like (more efficient)
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                query = query.Where(b =>
+                    EF.Functions.Like(b.FullName, $"%{searchTerm}%") ||
+                    EF.Functions.Like(b.BankName, $"%{searchTerm}%") ||
+                    EF.Functions.Like(b.Ifsccode, $"%{searchTerm}%") ||
+                    EF.Functions.Like(b.AccountNumber.ToString(), $"%{searchTerm}%"));
+            }
+
+            // Apply sorting
+            if (!string.IsNullOrWhiteSpace(sortBy))
+            {
+                query = sortBy.ToLower() switch
+                {
+                    "fullname" => sortDescending ? query.OrderByDescending(b => b.FullName) : query.OrderBy(b => b.FullName),
+                    "createdat" => sortDescending ? query.OrderByDescending(b => b.CreatedAt) : query.OrderBy(b => b.CreatedAt),
+                    "accountnumber" => sortDescending ? query.OrderByDescending(b => b.AccountNumber) : query.OrderBy(b => b.AccountNumber),
+                    "bankname" => sortDescending ? query.OrderByDescending(b => b.BankName) : query.OrderBy(b => b.BankName),
+                    "ifsccode" => sortDescending ? query.OrderByDescending(b => b.Ifsccode) : query.OrderBy(b => b.Ifsccode),
+                    _ => sortDescending ? query.OrderByDescending(b => b.BeneficiaryId) : query.OrderBy(b => b.BeneficiaryId)
+                };
+            }
+            else
+            {
+                query = query.OrderBy(b => b.BeneficiaryId);
+            }
+
+            // Get total count before pagination
+            var totalCount = await query.CountAsync();
+
+            // Apply pagination
+            var beneficiaries = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .AsNoTracking()
+                .ToListAsync();
+
+            return (beneficiaries, totalCount);
+        }
     }
 
 }
