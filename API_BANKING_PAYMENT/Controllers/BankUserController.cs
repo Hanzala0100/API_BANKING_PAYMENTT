@@ -5,6 +5,7 @@ using API_BANKING_PAYMENT.Services.IServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
 
 namespace API_BANKING_PAYMENT.Controllers
 {
@@ -385,6 +386,25 @@ namespace API_BANKING_PAYMENT.Controllers
             }
 
             var result = await _paymentService.GetPaymentsByStatusAsync(status);
+
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            else
+            {
+                return BadRequest(result);
+            }
+        }
+        [HttpPost("payments/all")]
+        public async Task<ActionResult<BaseResponseDTO<IEnumerable<PaymentDTO>>>> GetAllPaymentsByBankUser(long BankId)
+        {
+            if (BankId < 0)
+            {
+                return BadRequest(BaseResponseDTO<IEnumerable<PaymentDTO>>.ErrorResult("Status parameter is required"));
+            }
+
+            var result = await _paymentService.GetAllPaymentsByBankUserId(BankId);
 
             if (result.Success)
             {

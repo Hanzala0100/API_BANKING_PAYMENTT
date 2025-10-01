@@ -98,6 +98,22 @@ namespace API_BANKING_PAYMENT.Services
             }
         }
 
+        public async Task<BaseResponseDTO<IEnumerable<PaymentDTO>>> GetAllPaymentsByBankUserId(long BankId)
+        {
+            try
+            {
+                var payments = await _paymentRepository.GetPaymentsByBankUserIdAsync(BankId);
+                var paymentDTOs = _mapper.Map<IEnumerable<PaymentDTO>>(payments);
+
+                return BaseResponseDTO<IEnumerable<PaymentDTO>>.SuccessResult(paymentDTOs, "Payments retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving payments for BankId: {BankID}", BankId);
+                return BaseResponseDTO<IEnumerable<PaymentDTO>>.ErrorResult("Failed to retrieve payments", new List<string> { ex.Message });
+            }
+        }
+
         public async Task<BaseResponseDTO<IEnumerable<PaymentDTO>>> GetPendingPaymentsAsync()
         {
             try

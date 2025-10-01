@@ -8,6 +8,7 @@ namespace API_BANKING_PAYMENT.Services.IServices
         Task<BaseResponseDTO<PaymentDTO>> GetPaymentByIdAsync(long paymentId);
         Task<BaseResponseDTO<IEnumerable<PaymentDTO>>> GetPaymentsByClientIdAsync(long clientId);
         Task<BaseResponseDTO<IEnumerable<PaymentDTO>>> GetPendingPaymentsAsync();
+        Task<BaseResponseDTO<IEnumerable<PaymentDTO>>> GetAllPaymentsByBankUserId(long BankId);
         Task<BaseResponseDTO<PaymentDTO>> ApprovePaymentAsync(long paymentId, long approvedBy, string notes);
         Task<BaseResponseDTO<PaymentDTO>> RejectPaymentAsync(long paymentId, long rejectedBy, string notes);
         Task<BaseResponseDTO<bool>> DeletePaymentAsync(long paymentId);
