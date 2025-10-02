@@ -13,7 +13,7 @@ namespace API_BANKING_PAYMENT.Respositories
             _context = context;
         }
 
-        public async Task<Bank> GetBankWithDetails(int id)
+        public async Task<Bank> GetBankWithDetails(long id)
         {
             return await _context.Banks
                 .Include(b => b.Clients)
@@ -25,6 +25,7 @@ namespace API_BANKING_PAYMENT.Respositories
         {
             return await _context.Banks.FirstOrDefaultAsync(b => b.BankName == Name);
         }
+
 
         public async Task<List<Bank>> GetAllBanksAsync()
         {

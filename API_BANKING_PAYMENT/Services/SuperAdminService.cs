@@ -183,7 +183,7 @@ namespace API_BANKING_PAYMENT.Services
         {
             try
             {
-                var bank = await _bankRepository.GetById(bankId);
+                var bank = await _bankRepository.GetBankWithDetails(bankId);
 
                 if (bank == null)
                 {

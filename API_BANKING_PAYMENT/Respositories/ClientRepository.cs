@@ -120,5 +120,15 @@ namespace API_BANKING_PAYMENT.Respositories
                 .OrderBy(c => c.ClientName)
                 .ToListAsync();
         }
+
+
+        public async Task<Client> GetClientByIdAsync(long id)
+        {
+            return await _context.Clients
+                .Where(c => c.ClientId == id)
+                .Include(c => c.Bank)
+                .Include(c => c.Employees)
+                .FirstOrDefaultAsync();
+        }
     }
 }

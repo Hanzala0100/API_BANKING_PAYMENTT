@@ -21,5 +21,8 @@ namespace API_BANKING_PAYMENT.Respositories.IRepositories
 
         // Client details
         Task<Client> GetClientWithDetailsAsync(long clientId);
+
+        Task<Client> GetClientByIdAsync(long id);
+
     }
 }

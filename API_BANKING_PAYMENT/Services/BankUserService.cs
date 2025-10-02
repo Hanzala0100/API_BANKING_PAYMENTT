@@ -346,7 +346,7 @@ namespace API_BANKING_PAYMENT.Services
         {
             try
             {
-                var client = await _clientRepository.GetById(clientId);
+                var client = await _clientRepository.GetClientByIdAsync(clientId);
                 if (client == null)
                     return BaseResponseDTO<ClientDTO>.ErrorResult("Client not found");
 
