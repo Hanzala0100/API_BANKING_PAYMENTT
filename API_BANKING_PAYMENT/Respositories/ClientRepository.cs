@@ -29,6 +29,9 @@ namespace API_BANKING_PAYMENT.Respositories
             return await _context.Clients
                 .Where(cl => cl.BankId == id)
                 .Include(c => c.Bank)
+                .Include(c => c.Beneficiaries)
+                .Include(c=> c.Employees)
+                .Include(c=> c.Payments)
                 .ToListAsync();
         }
 
