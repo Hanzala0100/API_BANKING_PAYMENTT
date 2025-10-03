@@ -162,7 +162,6 @@ namespace API_BANKING_PAYMENT.Services
         {
             try
             {
-                // Validate client exists
                 var client = await _clientRepository.GetById(paginationRequest.ClientId);
                 if (client == null)
                 {

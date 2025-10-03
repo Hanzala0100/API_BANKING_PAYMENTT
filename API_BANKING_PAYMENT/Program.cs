@@ -81,12 +81,10 @@ namespace API_BANKING_PAYMENT
             builder.Services.Configure<ReCaptchaSettings>(builder.Configuration.GetSection("ReCaptchaSettings"));
             builder.Services.AddScoped<ReCaptchaService>();
                 builder.Services.AddHttpClient(); 
+
             //Admin
             builder.Services.AddScoped<ISuperAdminService, SuperAdminService>();
 
-               
-
-            // Add Authentication
             builder.Services.AddAuthentication(opt =>
             {
                 opt.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -110,27 +108,24 @@ namespace API_BANKING_PAYMENT
                 };
             });
 
-            //Seri Logger
             Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Information()
             .WriteTo.File("Logs/myapp-.log", rollingInterval: RollingInterval.Day)
             .CreateLogger();
                     builder.Host.UseSerilog();
 
-
-            //Adding CORS Policy
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowAngularApp",
                     policy =>
                     {
-                        policy.WithOrigins("http://localhost:4200", "https://localhost:4200") // Your Angular app URL
+                        policy.WithOrigins("http://localhost:4200", "https://localhost:4200") 
                               .AllowAnyHeader()
                               .AllowAnyMethod()
-                              .AllowCredentials(); // If you're using cookies/auth
+                              .AllowCredentials(); 
                     });
             });
-            //recaptcha
+
 
             builder.Services.AddHttpClient("Recaptcha", client =>
             {
@@ -138,7 +133,6 @@ namespace API_BANKING_PAYMENT
                 client.DefaultRequestHeaders.UserAgent.ParseAdd("MyApp/1.0");
             });
 
-            // Configure JWT to use Swagger
             builder.Services.AddSwaggerGen(options =>
             {
                 options.SwaggerDoc("v1", new OpenApiInfo
@@ -198,7 +192,6 @@ namespace API_BANKING_PAYMENT
                 }
             }
 
-            // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
