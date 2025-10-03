@@ -19,8 +19,6 @@ namespace API_BANKING_PAYMENT.Services
             _httpClientFactory = httpClientFactory;
             _settings = settings.Value;
             _logger = logger;
-
-            // check if secret key is loaded
             
         }
 
@@ -28,7 +26,6 @@ namespace API_BANKING_PAYMENT.Services
         {
             try
             {
-                // Log the secret key to verify it's being loaded
                 _logger.LogInformation("Using reCAPTCHA secret key: {SecretKey}", _settings.SecretKey);
 
                 var client = _httpClientFactory.CreateClient();

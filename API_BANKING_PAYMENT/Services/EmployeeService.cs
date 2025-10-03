@@ -149,7 +149,6 @@ namespace API_BANKING_PAYMENT.Services
                 if (Path.GetExtension(csvFile.FileName).ToLower() != ".csv")
                     return BaseResponseDTO<BulkEmployeeImportResponseDTO>.ErrorResult("Only CSV files are supported");
 
-                // Validate client exists
                 var client = await _clientRepository.GetById(clientId);
                 if (client == null)
                     return BaseResponseDTO<BulkEmployeeImportResponseDTO>.ErrorResult("Client not found");
@@ -164,7 +163,6 @@ namespace API_BANKING_PAYMENT.Services
                 {
                     try
                     {
-                        // Validate required fields
                         if (string.IsNullOrEmpty(employee.FullName) ||
                             string.IsNullOrEmpty(employee.Email) ||
                             employee.AccountNumber == 0)
@@ -174,7 +172,6 @@ namespace API_BANKING_PAYMENT.Services
                             continue;
                         }
 
-                        // Check if employee already exists
                         var exists = await _repository.EmployeeExistsAsync(clientId, employee.Email, employee.AccountNumber);
                         if (exists)
                         {
@@ -183,7 +180,6 @@ namespace API_BANKING_PAYMENT.Services
                             continue;
                         }
 
-                        // Validate email format
                         if (!IsValidEmail(employee.Email))
                         {
                             response.Errors.Add($"Invalid email format: {employee.Email}");
@@ -191,7 +187,6 @@ namespace API_BANKING_PAYMENT.Services
                             continue;
                         }
 
-                        // Create employee entity
                         var employeeEntity = new Employee
                         {
                             ClientId = clientId,
@@ -215,12 +210,10 @@ namespace API_BANKING_PAYMENT.Services
                     }
                 }
 
-                // Bulk insert valid employees
                 if (validEmployees.Any())
                 {
                     await _repository.AddRangeAsync(validEmployees);
 
-                    // Map to DTOs for response
                     importedEmployees = _mapper.Map<List<EmployeeDTO>>(validEmployees);
                     response.ImportedEmployees = importedEmployees;
                 }
@@ -246,7 +239,6 @@ namespace API_BANKING_PAYMENT.Services
             using (var stream = new StreamReader(csvFile.OpenReadStream()))
             using (var csv = new CsvReader(stream, System.Globalization.CultureInfo.InvariantCulture))
             {
-                // Configure CSV reader
                 csv.Context.RegisterClassMap<CsvEmployeeMap>();
 
                 var records = csv.GetRecords<CsvEmployeeRecordDTO>();
@@ -283,12 +275,10 @@ namespace API_BANKING_PAYMENT.Services
             }
         }
 
-        //Paginated Retrieval of Employees
         public async Task<BaseResponseDTO<PaginatedResponseDTO<EmployeeDTO>>> GetAllPaginatedAsync(PaginationRequestDTO paginationRequest)
         {
             try
             {
-                // Validate client exists
                 var client = await _clientRepository.GetById(paginationRequest.ClientId);
                 if (client == null)
                 {

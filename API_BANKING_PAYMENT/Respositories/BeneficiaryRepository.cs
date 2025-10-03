@@ -1,12 +1,10 @@
-﻿using API_BANKING_PAYMENT.Models;
-using API_BANKING_PAYMENT.Models.DTO;
-using API_BANKING_PAYMENT.Models.Entities;
+﻿using API_BANKING_PAYMENT.Models.Entities;
 using API_BANKING_PAYMENT.Respositories.IRepositories;
 using Microsoft.EntityFrameworkCore;
 
 namespace API_BANKING_PAYMENT.Respositories
 {
-    public class BeneficiaryRepository : Repository<Beneficiary> , IBeneficiaryRepository
+    public class BeneficiaryRepository : Repository<Beneficiary>, IBeneficiaryRepository
     {
         private readonly BankDbContext _context;
         public BeneficiaryRepository(BankDbContext context) : base(context)
@@ -40,11 +38,8 @@ namespace API_BANKING_PAYMENT.Respositories
             string? sortBy = null,
             bool sortDescending = false)
         {
-            // Start with client filter
             var query = _context.Beneficiaries.Where(b => b.ClientId == clientId);
 
-            // Apply search filter
-            // Alternative using EF.Functions.Like (more efficient)
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
                 query = query.Where(b =>
@@ -54,7 +49,6 @@ namespace API_BANKING_PAYMENT.Respositories
                     EF.Functions.Like(b.AccountNumber.ToString(), $"%{searchTerm}%"));
             }
 
-            // Apply sorting
             if (!string.IsNullOrWhiteSpace(sortBy))
             {
                 query = sortBy.ToLower() switch
@@ -72,10 +66,8 @@ namespace API_BANKING_PAYMENT.Respositories
                 query = query.OrderBy(b => b.BeneficiaryId);
             }
 
-            // Get total count before pagination
             var totalCount = await query.CountAsync();
 
-            // Apply pagination
             var beneficiaries = await query
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
