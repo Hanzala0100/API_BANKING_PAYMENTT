@@ -85,6 +85,10 @@ namespace API_BANKING_PAYMENT
             //Admin
             builder.Services.AddScoped<ISuperAdminService, SuperAdminService>();
 
+            //Email Service 
+            builder.Services.AddScoped<IEmailService, EmailService>();
+            builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
+
             builder.Services.AddAuthentication(opt =>
             {
                 opt.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;

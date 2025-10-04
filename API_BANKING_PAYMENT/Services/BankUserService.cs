@@ -16,6 +16,8 @@ namespace API_BANKING_PAYMENT.Services
         private readonly IConfiguration _configuration;
         private readonly IMapper _mapper;
         private readonly ILogger<BankUserService> _logger;
+        private readonly IEmailService _emailService;
+        private readonly IEmailTemplateService _emailTemplateService;
 
         public BankUserService(
             IConfiguration configuration,
@@ -23,7 +25,9 @@ namespace API_BANKING_PAYMENT.Services
             IUserRepository userRepository,
             IDocumentService documentService,
             IMapper mapper,
-            ILogger<BankUserService> logger)
+            ILogger<BankUserService> logger,
+            IEmailService emailService,
+            IEmailTemplateService emailTemplateService)
         {
             _configuration = configuration;
             _clientRepository = clientRepository;
@@ -31,6 +35,8 @@ namespace API_BANKING_PAYMENT.Services
             _documentService = documentService;
             _mapper = mapper;
             _logger = logger;
+            _emailService = emailService;
+            _emailTemplateService = emailTemplateService;
         }
 
         public async Task<BaseResponseDTO<ClientDTO>> CreateClientAsync(ClientCreationDTO clientDTO)
@@ -144,6 +150,16 @@ namespace API_BANKING_PAYMENT.Services
 
                 if (result)
                 {
+                    // Send email only for approved or rejected status
+                    if (verificationStatus.ToLower() == "approved" || verificationStatus.ToLower() == "verified")
+                    {
+                        await _emailService.SendApprovalEmailAsync(clientId, notes);
+                    }
+                    else if (verificationStatus.ToLower() == "rejected")
+                    {
+                        await _emailService.SendRejectionEmailAsync(clientId, notes);
+                    }
+
                     var clientDTO = _mapper.Map<ClientDTO>(client);
                     _logger.LogInformation("Client verification status updated: Client ID: {ClientId}, From: {OldStatus}, To: {NewStatus}",
                         clientId, oldStatus, verificationStatus);
@@ -161,7 +177,6 @@ namespace API_BANKING_PAYMENT.Services
                 return BaseResponseDTO<ClientDTO>.ErrorResult("Error occurred while verifying client", new List<string> { ex.Message });
             }
         }
-
         public async Task<BaseResponseDTO<IEnumerable<DocumentDTO>>> GetClientDocumentsAsync(long clientId)
         {
             try
@@ -224,9 +239,10 @@ namespace API_BANKING_PAYMENT.Services
                 if (userDTO == null)
                     return BaseResponseDTO<ClientUserCreationDTO>.ErrorResult("User data cannot be null");
 
+                Client? client = null;
                 if (userDTO.ClientId.HasValue)
                 {
-                    var client = await _clientRepository.GetById(userDTO.ClientId.Value);
+                    client = await _clientRepository.GetById(userDTO.ClientId.Value);
                     if (client == null)
                         return BaseResponseDTO<ClientUserCreationDTO>.ErrorResult("Client not found");
 
@@ -257,7 +273,14 @@ namespace API_BANKING_PAYMENT.Services
                     ClientId = (int?)createdUser.ClientId
                 };
 
-                return BaseResponseDTO<ClientUserCreationDTO>.SuccessResult(clientUserDto, "Client user created successfully");
+                await _emailService.SendClientUserWelcomeEmailAsync(clientUserDto);
+
+                if (client != null && client.VerificationStatus == VerificationStatus.Pending)
+                {
+                    await _emailService.SendPendingVerificationEmailAsync(client.ClientId, clientUserDto.Email);
+                }
+
+                return BaseResponseDTO<ClientUserCreationDTO>.SuccessResult(clientUserDto, "Client user created successfully and emails sent");
             }
             catch (Exception ex)
             {
@@ -408,5 +431,6 @@ namespace API_BANKING_PAYMENT.Services
                 return BaseResponseDTO<ClientDTO>.ErrorResult("Error occurred while updating client", new List<string> { ex.Message });
             }
         }
+
     }
 }
