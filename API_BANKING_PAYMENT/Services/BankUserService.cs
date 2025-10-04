@@ -151,7 +151,7 @@ namespace API_BANKING_PAYMENT.Services
                 if (result)
                 {
                     // Send email only for approved or rejected status
-                    if (verificationStatus.ToLower() == "approved" || verificationStatus.ToLower() == "verified")
+                    if (verificationStatus.ToLower() == "verified")
                     {
                         await _emailService.SendApprovalEmailAsync(clientId, notes);
                     }

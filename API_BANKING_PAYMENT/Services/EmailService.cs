@@ -1,4 +1,5 @@
 ﻿using API_BANKING_PAYMENT.Models.DTO;
+using API_BANKING_PAYMENT.Models.Entities;
 using API_BANKING_PAYMENT.Respositories.IRepositories;
 using API_BANKING_PAYMENT.Services.IServices;
 using Microsoft.Extensions.Configuration;
@@ -12,18 +13,21 @@ namespace API_BANKING_PAYMENT.Services
         private readonly IConfiguration _configuration;
         private readonly IEmailTemplateService _emailTemplateService;
         private readonly IClientRepository _clientRepository;
+        private readonly IUserRepository _usersRepository;
         private readonly ILogger<EmailService> _logger;
 
         public EmailService(
             IConfiguration configuration,
             IEmailTemplateService emailTemplateService,
             IClientRepository clientRepository,
-            ILogger<EmailService> logger)
+            ILogger<EmailService> logger,
+            IUserRepository usersRepository)
         {
             _configuration = configuration;
             _emailTemplateService = emailTemplateService;
             _clientRepository = clientRepository;
             _logger = logger;
+            _usersRepository = usersRepository;
         }
 
         public async Task<BaseResponseDTO<bool>> SendEmailAsync(EmailRequestDTO emailRequest)
@@ -222,23 +226,22 @@ namespace API_BANKING_PAYMENT.Services
                 return BaseResponseDTO<bool>.ErrorResult("Error sending rejection email", new List<string> { ex.Message });
             }
         }
+
         public async Task<BaseResponseDTO<bool>> SendClientVerificationEmailAsync(ClientEmailRequestDTO clientEmailRequest)
         {
             try
             {
-                // Get client details including email
                 var client = await _clientRepository.GetById(clientEmailRequest.ClientId);
                 if (client == null)
                     return BaseResponseDTO<bool>.ErrorResult("Client not found");
 
-                // In a real scenario, you would have client email stored
-                // For now, we'll use a placeholder - you should add Email field to Client entity
-                var clientEmail = clientEmailRequest.Parameters.ContainsKey("ClientEmail")
-                    ? clientEmailRequest.Parameters["ClientEmail"]
-                    : $"{client.RegisterationNumber}@client.com"; // Fallback
+                var clientUsers = await _usersRepository.GetUsersByClientId(clientEmailRequest.ClientId);
+                if (clientUsers == null || !clientUsers.Any())
+                    return BaseResponseDTO<bool>.ErrorResult("No users found for this client");
 
-                if (string.IsNullOrEmpty(clientEmail))
-                    return BaseResponseDTO<bool>.ErrorResult("Client email not found");
+                var validUsers = clientUsers.Where(u => !string.IsNullOrEmpty(u.Email)).ToList();
+                if (!validUsers.Any())
+                    return BaseResponseDTO<bool>.ErrorResult("No valid email addresses found for client users");
 
                 string subject = "";
                 string body = "";
@@ -274,20 +277,64 @@ namespace API_BANKING_PAYMENT.Services
                         return BaseResponseDTO<bool>.ErrorResult($"Unsupported email type: {clientEmailRequest.EmailType}");
                 }
 
-                var emailRequest = new EmailRequestDTO
-                {
-                    ToEmail = clientEmail,
-                    Subject = subject,
-                    Body = body,
-                    IsHtml = true
-                };
+                var sendTasks = validUsers.Select(user => SendEmailToUserAsync(user, subject, body));
+                var results = await Task.WhenAll(sendTasks);
 
-                return await SendEmailAsync(emailRequest);
+                var successCount = results.Count(r => r.Success);
+                var failedCount = results.Count(r => !r.Success);
+
+                if (failedCount == 0)
+                {
+                    _logger.LogInformation("Client verification email sent successfully to all {Count} users for client: {ClientName}",
+                        successCount, client.ClientName);
+                    return BaseResponseDTO<bool>.SuccessResult(true, $"Email sent to {successCount} users");
+                }
+                else
+                {
+                    _logger.LogWarning("Client verification email partially sent. Success: {SuccessCount}, Failed: {FailedCount} for client: {ClientName}",
+                        successCount, failedCount, client.ClientName);
+                    return BaseResponseDTO<bool>.SuccessResult(true,
+                        $"Email sent to {successCount} users, failed for {failedCount} users");
+                }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error sending client verification email for client ID: {ClientId}", clientEmailRequest.ClientId);
                 return BaseResponseDTO<bool>.ErrorResult("Error sending client verification email", new List<string> { ex.Message });
+            }
+        }
+
+        private async Task<BaseResponseDTO<bool>> SendEmailToUserAsync(User user, string subject, string body)
+        {
+            try
+            {
+                var emailRequest = new EmailRequestDTO
+                {
+                    ToEmail = user.Email,
+                    Subject = subject,
+                    Body = body,
+                    IsHtml = true
+                };
+
+                var result = await SendEmailAsync(emailRequest);
+
+                if (result.Success)
+                {
+                    _logger.LogInformation("Email sent successfully to user: {UserName} ({Email})",
+                        user.FullName, user.Email);
+                }
+                else
+                {
+                    _logger.LogWarning("Failed to send email to user: {UserName} ({Email}). Error: {Error}",
+                        user.FullName, user.Email, result.Message);
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending email to user: {UserName} ({Email})", user.FullName, user.Email);
+                return BaseResponseDTO<bool>.ErrorResult($"Failed to send email to {user.Email}");
             }
         }
         public async Task<BaseResponseDTO<bool>> SendBulkEmailsAsync(List<EmailRequestDTO> emailRequests)
