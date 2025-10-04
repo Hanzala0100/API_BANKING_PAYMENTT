@@ -53,7 +53,7 @@ namespace API_BANKING_PAYMENT.Services
                     return BaseResponseDTO<SalaryDisbursementDTO>.ErrorResult("Salary already disbursed or pending for this month");
 
                 var salaryDisbursement = _mapper.Map<SalaryDisbursement>(disbursementDTO);
-                salaryDisbursement.Status = "Pending";
+                salaryDisbursement.Status = "Completed";
                 salaryDisbursement.CreatedAt = DateTime.UtcNow;
 
                 await _salaryDisbursementRepository.Add(salaryDisbursement);
@@ -118,7 +118,7 @@ namespace API_BANKING_PAYMENT.Services
                             ClientId = batchDTO.ClientId,
                             EmployeeId = employeeSalary.EmployeeId,
                             Amount = employeeSalary.Amount,  
-                            Status = "Pending",
+                            Status = "Completed",
                             DisbursementDate = batchDTO.DisbursementDate,
                             CreatedAt = DateTime.UtcNow
                         };

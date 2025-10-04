@@ -849,6 +849,26 @@ namespace API_BANKING_PAYMENT.Controllers
         }
 
 
+        [HttpGet("clients/{clientId}")]
+        public async Task<ActionResult<BaseResponseDTO<ClientDTO>>> GetClientById(long clientId)
+        {
+            if (clientId <= 0)
+            {
+                return BadRequest(BaseResponseDTO<ClientDTO>.ErrorResult("Invalid client ID"));
+            }
+
+            var result = await _bankUserService.GetClientByIdAsync(clientId);
+
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            else
+            {
+                return NotFound(result);
+            }
+        }
+
     }
 
 
