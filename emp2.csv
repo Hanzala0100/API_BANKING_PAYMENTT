@@ -1,0 +1,11 @@
+FullName,PhoneNumber,Email,AccountNumber,BankName,Ifsccode,SalaryAmount
+Aarav Sharma,9876543211,aarav.sharma@example.com,1234567891,HDFC Bank,HDFC0001235,58000
+Priya Patel,9123456790,priya.patel@example.com,2345678902,ICICI Bank,ICIC0002346,65000
+Rahul Kumar,9988776656,rahul.kumar@example.com,3456789013,Axis Bank,UTIB0003457,48000
+Ananya Singh,9876501235,ananya.singh@example.com,4567890124,SBI Bank,SBIN0004568,72000
+Vikram Reddy,9123009877,vikram.reddy@example.com,5678901235,Kotak Bank,KKBK0005679,82000
+Neha Gupta,9012345679,neha.gupta@example.com,6789012346,HDFC Bank,HDFC0006790,52000
+Sanjay Mishra,9876123451,sanjay.mishra@example.com,7890123457,ICICI Bank,ICIC0007891,64000
+Divya Joshi,9765432110,divya.joshi@example.com,8901234568,Axis Bank,UTIB0008902,59000
+Rajesh Iyer,9654321099,rajesh.iyer@example.com,9012345679,SBI Bank,SBIN0009013,77000
+Meera Nair,9543210988,meera.nair@example.com,1122334456,Kotak Bank,KKBK0001123,69000

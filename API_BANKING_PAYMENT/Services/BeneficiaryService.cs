@@ -13,15 +13,19 @@ namespace API_BANKING_PAYMENT.Services
         private readonly IBeneficiaryRepository _repository;
         private readonly IMapper _mapper;
         private readonly ILogger<BeneficiaryService> _logger;
+        private readonly IClientRepository _clientRepository;
 
         public BeneficiaryService(
             IBeneficiaryRepository repository,
             IMapper mapper,
-            ILogger<BeneficiaryService> logger)
+            ILogger<BeneficiaryService> logger,
+            IClientRepository clientRepository)
+
         {
             _repository = repository;
             _mapper = mapper;
             _logger = logger;
+            _clientRepository = clientRepository;
         }
 
         public async Task<BaseResponseDTO<BeneficiaryDTO>> CreateAsync(BeneficiaryRequestDTO model)
@@ -158,8 +162,7 @@ namespace API_BANKING_PAYMENT.Services
         {
             try
             {
-                // Validate client exists
-                var client = await _repository.GetById(paginationRequest.ClientId);
+                var client = await _clientRepository.GetById(paginationRequest.ClientId);
                 if (client == null)
                 {
                     return BaseResponseDTO<PaginatedResponseDTO<BeneficiaryDTO>>.ErrorResult("Client not found.");

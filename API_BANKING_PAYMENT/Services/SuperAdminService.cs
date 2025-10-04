@@ -148,9 +148,8 @@ namespace API_BANKING_PAYMENT.Services
                 {
                     var dto = _mapper.Map<BankDTO>(bank);
 
-                    // Fetch the admin user for this bank
                     var adminUser = await _userRepository.GetUsersByBankId(bank.BankId);
-                    var admin = adminUser.FirstOrDefault(); // Assuming the first user with BankId is admin
+                    var admin = adminUser.FirstOrDefault(); 
 
                     if (admin != null)
                     {
@@ -183,7 +182,7 @@ namespace API_BANKING_PAYMENT.Services
         {
             try
             {
-                var bank = await _bankRepository.GetById(bankId);
+                var bank = await _bankRepository.GetBankWithDetails(bankId);
 
                 if (bank == null)
                 {

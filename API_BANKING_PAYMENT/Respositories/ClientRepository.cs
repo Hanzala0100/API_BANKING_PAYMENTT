@@ -29,6 +29,9 @@ namespace API_BANKING_PAYMENT.Respositories
             return await _context.Clients
                 .Where(cl => cl.BankId == id)
                 .Include(c => c.Bank)
+                .Include(c => c.Beneficiaries)
+                .Include(c=> c.Employees)
+                .Include(c=> c.Payments)
                 .ToListAsync();
         }
 
@@ -119,6 +122,16 @@ namespace API_BANKING_PAYMENT.Respositories
                 .Include(c => c.Users)
                 .OrderBy(c => c.ClientName)
                 .ToListAsync();
+        }
+
+
+        public async Task<Client> GetClientByIdAsync(long id)
+        {
+            return await _context.Clients
+                .Where(c => c.ClientId == id)
+                .Include(c => c.Bank)
+                .Include(c => c.Employees)
+                .FirstOrDefaultAsync();
         }
     }
 }

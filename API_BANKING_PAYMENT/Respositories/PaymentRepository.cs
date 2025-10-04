@@ -25,6 +25,17 @@ namespace API_BANKING_PAYMENT.Respositories
                 .ToListAsync();
         }
 
+        public async Task<IEnumerable<Payment>> GetPaymentsByBankUserIdAsync(long BankId)
+        {
+            return await _context.Payments
+                .Where(p => p.Client.BankId == BankId)
+                .Include(p => p.Beneficiary)
+                .Include(p => p.Client)
+                .Include(p => p.ApprovedByNavigation)
+                .OrderByDescending(p => p.CreatedAt)
+                .ToListAsync();
+        }
+
         public async Task<IEnumerable<Payment>> GetPaymentsByStatusAsync(string status)
         {
             return await _context.Payments

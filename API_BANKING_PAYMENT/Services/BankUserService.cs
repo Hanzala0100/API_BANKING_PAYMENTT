@@ -246,9 +246,9 @@ namespace API_BANKING_PAYMENT.Services
                     if (client == null)
                         return BaseResponseDTO<ClientUserCreationDTO>.ErrorResult("Client not found");
 
-                    if (client.VerificationStatus != VerificationStatus.Verified)
-                        return BaseResponseDTO<ClientUserCreationDTO>.ErrorResult(
-                            $"Cannot create user for client with status: {client.VerificationStatus}. Client must be {VerificationStatus.Verified}.");
+                    //if (client.VerificationStatus != VerificationStatus.Verified)
+                    //    return BaseResponseDTO<ClientUserCreationDTO>.ErrorResult(
+                    //        $"Cannot create user for client with status: {client.VerificationStatus}. Client must be {VerificationStatus.Verified}.");
                 }
 
                 var existingUser = await _userRepository.GetByEmailAsync(userDTO.Email) ?? await _userRepository.GetByUsernameAsync(userDTO.UserName);
@@ -369,7 +369,7 @@ namespace API_BANKING_PAYMENT.Services
         {
             try
             {
-                var client = await _clientRepository.GetById(clientId);
+                var client = await _clientRepository.GetClientByIdAsync(clientId);
                 if (client == null)
                     return BaseResponseDTO<ClientDTO>.ErrorResult("Client not found");
 

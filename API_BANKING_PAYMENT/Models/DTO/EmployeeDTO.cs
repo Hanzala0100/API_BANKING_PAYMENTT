@@ -1,5 +1,6 @@
 ﻿namespace API_BANKING_PAYMENT.Models.DTO
 {
+    //emp dto
     public class EmployeeDTO
     {
         public long EmployeeId { get; set; }
